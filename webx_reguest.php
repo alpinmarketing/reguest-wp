@@ -140,10 +140,13 @@ class ReguestAPIClient {
 
         $this->options[CURLOPT_POSTFIELDS] = json_encode($request);
         curl_setopt_array($this->client,$this->options);
-        $return = curl_exec($this->client);   
+	    $return = json_decode(curl_exec($this->client),1);
 
-        if($return['success']) return true;
-        else return false;
+        if($return['Success']) {
+	        return true;
+        } else {
+	        return false;
+        }
     }
 }
 
