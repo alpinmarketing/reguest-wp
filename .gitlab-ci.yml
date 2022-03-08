@@ -1,0 +1,39 @@
+default:
+  tags:
+    - node16
+
+stages:
+  - deploy-dev
+  - deploy-live
+
+deploy-dev-job:
+    stage: deploy-dev
+    image: maurosoft1973/alpine-lftp
+    environment:
+      name: development
+      url: https://dev.familyresort.at
+
+    variables:
+        FTP_SERVER: 'sftp://dev.familyresort.at'
+        FTP_REMOTE_FOLDER: 'html/wp-content/plugins/webx_reguest'
+    script:
+        - /restore_last_git_modified_time.sh
+        - lftp -e "set ssl:verify-certificate no; set ftp:use-mdtm-overloaded true; open -p 222 $FTP_SERVER; user $FAMILYRESORT_LIVE_USER '$FAMILYRESORT_LIVE_PASS'; mirror -X .* -X .*/ --reverse --verbose --delete $PWD $FTP_REMOTE_FOLDER; bye"
+    only:
+        - master
+
+deploy-live-job:
+    when: manual
+    stage: deploy-live
+    image: maurosoft1973/alpine-lftp
+    environment:
+      name: production
+
+    variables:
+        FAMILYRESORT_FTP_SERVER: 'sftp://familyresort.at'
+    script:
+        - /restore_last_git_modified_time.sh
+        - lftp -e "set ssl:verify-certificate no; set ftp:use-mdtm-overloaded true; open -p 222 $FAMILYRESORT_FTP_SERVER; user $FAMILYRESORT_LIVE_USER '$FAMILYRESORT_LIVE_PASS'; mirror -X .* -X .*/ --reverse --verbose --delete $PWD $FTP_REMOTE_FOLDER; bye"
+
+    only:
+        - master

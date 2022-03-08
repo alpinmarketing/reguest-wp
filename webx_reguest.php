@@ -3,7 +3,7 @@
  * Plugin Name: Webx Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Requests to Reguest
- * Version: 1.0
+ * Version: 1.1
  * Author: Gunther Urbanke
  * Author URI: https://www.web-crossing.com
  */
