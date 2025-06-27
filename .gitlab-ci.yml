@@ -8,7 +8,7 @@ stages:
 
 deploy-dev-job:
     stage: deploy-dev
-    image: maurosoft1973/alpine-lftp
+    image: maurosoft1973/alpine-lftp:4.9.1
     environment:
       name: development
       url: https://dev.familyresort.at
@@ -25,7 +25,7 @@ deploy-dev-job:
 deploy-live-job:
     when: manual
     stage: deploy-live
-    image: maurosoft1973/alpine-lftp
+    image: maurosoft1973/alpine-lftp:4.9.1
     environment:
       name: production
 
