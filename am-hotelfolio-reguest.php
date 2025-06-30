@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 2.3
+ * Version: 2.5
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
@@ -60,7 +60,7 @@ class ReguestAPIClient {
      * 
      * @return bool
      */
-    public function send(array $form, array $fields) {
+    public function send(array $form, array $fields): bool {
         $roomOccupancies = ['Adults','Children','ChildrenAges'];
         
         $form['kinderalter'] = explode(',',trim(preg_replace('/\D+/',',',$form['kinderalter']),','));
@@ -96,7 +96,7 @@ class ReguestAPIClient {
                 $request['Gender'] = 2;
                 break;
             case 'Firma': case 'Company':
-                $request['GuestUserType'] = 2;
+                $request['GuestUserType'] = 0;
                 break;
             default: break;
         }
@@ -120,7 +120,7 @@ class ReguestAPIClient {
                         $request['Gender'] = 2;
                         break;
                     case 'Firma': case 'Company':
-                        $request['GuestUserType'] = 2;
+                        $request['GuestUserType'] = 0;
                         break;
                     default: break;
                 }
@@ -155,7 +155,7 @@ class ReguestAPIClient {
  * @return void
  */
 function send_to_reguest($contact_form) {
-    $options = get_option('webx_reguest_options');
+    $options = get_option('am_hotelfolio_reguest_options');
 
     // Exit if the plugin is not active or credentials are not set
     if (empty($options['active']) || empty($options['uri']) || empty($options['username']) || empty($options['password'])) {
@@ -172,7 +172,7 @@ function send_to_reguest($contact_form) {
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
         $form_data['form_title'] = strtoupper($contact_form->title);
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);
-        return $apiClient->send($form_data, $options['form'] ?? []);
+        return $apiClient->send($form_data, $options['form_mapping'] ?? []);
     }
 }
 add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
@@ -182,36 +182,61 @@ add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
  * Admin Settings Section
  */
 
-function webx_reguest_add_admin_menu() {
-    add_options_page('Reguest API Settings', 'Reguest', 'manage_options', 'am-hotelfolio-reguest', 'webx_reguest_options_page_html');
+function am_hotelfolio_reguest_add_admin_menu() {
+    add_options_page('Reguest API Settings', 'Reguest', 'manage_options', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_options_page_html');
 }
-add_action('admin_menu', 'webx_reguest_add_admin_menu');
+add_action('admin_menu', 'am_hotelfolio_reguest_add_admin_menu');
 
-function webx_reguest_enqueue_admin_assets($hook) {
+function am_hotelfolio_reguest_enqueue_admin_assets($hook) {
     if ('settings_page_am-hotelfolio-reguest' !== $hook) {
         return;
     }
     wp_enqueue_style('am-hotelfolio-reguest-admin-style', plugin_dir_url(__FILE__) . 'am-hotelfolio-reguest-admin-style.css', [], '1.0');
     wp_enqueue_script('am-hotelfolio-reguest-admin-script', plugin_dir_url(__FILE__) . 'am-hotelfolio-reguest-admin-script.js', ['jquery'], '1.0', true);
 }
-add_action('admin_enqueue_scripts', 'webx_reguest_enqueue_admin_assets');
+add_action('admin_enqueue_scripts', 'am_hotelfolio_reguest_enqueue_admin_assets');
 
 
-function webx_reguest_settings_init() {
-    register_setting('webx_reguest_options_group', 'webx_reguest_options', 'webx_reguest_sanitize_options');
+function am_hotelfolio_reguest_settings_init() {
+    register_setting('am_hotelfolio_reguest_options_group', 'am_hotelfolio_reguest_options', 'am_hotelfolio_reguest_sanitize_options');
 
-    add_settings_section('webx_reguest_main_section', 'API Credentials', null, 'am-hotelfolio-reguest');
+    add_settings_section('am_hotelfolio_reguest_main_section', 'API Credentials', null, 'am-hotelfolio-reguest');
 
-    add_settings_field('webx_reguest_active', 'Plugin aktiv', 'webx_reguest_field_active_cb', 'am-hotelfolio-reguest', 'webx_reguest_main_section');
-    add_settings_field('webx_reguest_username', 'Benutzername', 'webx_reguest_field_text_cb', 'am-hotelfolio-reguest', 'webx_reguest_main_section', ['id' => 'username', 'type' => 'text']);
-    add_settings_field('webx_reguest_password', 'Passwort', 'webx_reguest_field_text_cb', 'am-hotelfolio-reguest', 'webx_reguest_main_section', ['id' => 'password', 'type' => 'password']);
-    add_settings_field('webx_reguest_uri', 'API Link', 'webx_reguest_field_text_cb', 'am-hotelfolio-reguest', 'webx_reguest_main_section', ['id' => 'uri', 'type' => 'url']);
+    add_settings_field('am_hotelfolio_reguest_active', 'Plugin aktiv', 'am_hotelfolio_reguest_field_active_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section');
+    add_settings_field('am_hotelfolio_reguest_username', 'Benutzername', 'am_hotelfolio_reguest_field_text_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'username', 'type' => 'text']);
+    add_settings_field('am_hotelfolio_reguest_password', 'Passwort', 'am_hotelfolio_reguest_field_text_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'password', 'type' => 'password']);
+    add_settings_field('am_hotelfolio_reguest_uri', 'API Link', 'am_hotelfolio_reguest_field_text_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'uri', 'type' => 'url']);
 
-    add_settings_section('webx_reguest_form_section', 'Form Field Mapping', null, 'am-hotelfolio-reguest');
-    add_settings_field('webx_reguest_form_mapping', 'API Field => Form Field', 'webx_reguest_field_mapping_cb', 'am-hotelfolio-reguest', 'webx_reguest_form_section');
+    add_settings_section('am_hotelfolio_reguest_form_section', 'Form Field Mapping', null, 'am-hotelfolio-reguest');
+    add_settings_field('am_hotelfolio_reguest_form_mapping', 'API Field => Form Field', 'am_hotelfolio_reguest_field_mapping_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_form_section');
 }
-add_action('admin_init', 'webx_reguest_settings_init');
+add_action('admin_init', 'am_hotelfolio_reguest_settings_init');
 
+/**
+ * Run a one-time migration of old settings to the new options array.
+ * This ensures that settings from versions before the Settings API are not lost.
+ */
+function am_hotelfolio_reguest_run_migration() {
+    // Use a unique name for the migration flag to avoid conflicts.
+    if (get_option('am_hotelfolio_reguest_migrated_to_single_option_v2_4')) {
+        return;
+    }
+
+    $new_options = get_option('am_hotelfolio_reguest_options', []);
+    $migrated = false;
+
+    // 1. Check for the very old separate options.
+    if (get_option('webx_reguest_username') !== false) {
+        $new_options['active']   = get_option('webx_reguest_active');
+        $new_options['username'] = get_option('webx_reguest_username');
+        $new_options['password'] = get_option('webx_reguest_password');
+        $new_options['uri']      = get_option('webx_reguest_uri');
+        $new_options['form_mapping']
+        delete_option('webx_reguest_form');
+    }
+    update_option('webx_reguest_migration_done', true);
+}
+add_action('admin_init', 'webx_reguest_run_migration');
 
 function webx_reguest_sanitize_options($input) {
     $sanitized_input = [];
