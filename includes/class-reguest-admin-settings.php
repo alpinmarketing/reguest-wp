@@ -12,8 +12,11 @@ function am_hotelfolio_reguest_enqueue_admin_assets($hook) {
     if ('settings_page_am-hotelfolio-reguest' !== $hook) {
         return;
     }
-    wp_enqueue_style('am-hotelfolio-reguest-admin-style', plugin_dir_url(__FILE__) . 'admin/css/am-hotelfolio-reguest-admin-style.css', [], '1.0');
-    wp_enqueue_script('am-hotelfolio-reguest-admin-script', plugin_dir_url(__FILE__) . 'admin/js/am-hotelfolio-reguest-admin-script.js', ['jquery'], '1.0', true);
+    // Get the base URL of the plugin, not the 'includes' directory, to correctly locate the admin assets.
+    $plugin_url = dirname(plugin_dir_url(__FILE__));
+
+    wp_enqueue_style('am-hotelfolio-reguest-admin-style', $plugin_url . '/admin/css/am-hotelfolio-reguest-admin-style.css', [], '1.0');
+    wp_enqueue_script('am-hotelfolio-reguest-admin-script', $plugin_url . '/admin/js/am-hotelfolio-reguest-admin-script.js', ['jquery'], '1.0', true);
 }
 add_action('admin_enqueue_scripts', 'am_hotelfolio_reguest_enqueue_admin_assets');
 
