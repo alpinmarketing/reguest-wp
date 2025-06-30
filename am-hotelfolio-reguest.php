@@ -279,14 +279,14 @@ add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
 /**
  * Admin Settings Section
  */
+
 function am_hotelfolio_reguest_add_admin_menu() {
     add_options_page('Reguest API Settings', 'Reguest', 'manage_options', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_options_page_html');
 }
 add_action('admin_menu', 'am_hotelfolio_reguest_add_admin_menu');
 
 function am_hotelfolio_reguest_enqueue_admin_assets($hook) {
-    // The hook for a submenu page is {parent_slug}_page_{submenu_slug}
-    if ('hotelfolio_settings_page_am_reguest' !== $hook) {
+    if ('settings_page_am-hotelfolio-reguest' !== $hook) {
         return;
     }
     wp_enqueue_style('am-hotelfolio-reguest-admin-style', plugin_dir_url(__FILE__) . 'am-hotelfolio-reguest-admin-style.css', [], '1.0');
