@@ -218,29 +218,42 @@ add_action('admin_init', 'am_hotelfolio_reguest_settings_init');
  */
 function am_hotelfolio_reguest_run_migration() {
     // Use a unique name for the migration flag to avoid conflicts.
-    if (get_option('am_hotelfolio_reguest_migrated_to_single_option_v2_4')) {
+    $migration_flag = 'am_hotelfolio_reguest_migrated_to_v2_5';
+    // Exit if migration has already been done.
+    if (get_option($migration_flag)) {
         return;
     }
 
-    $new_options = get_option('am_hotelfolio_reguest_options', []);
-    $migrated = false;
-
-    // 1. Check for the very old separate options.
+    // Check for the existence of old, separate options.
     if (get_option('webx_reguest_username') !== false) {
-        $new_options['active']   = get_option('webx_reguest_active');
-        $new_options['username'] = get_option('webx_reguest_username');
-        $new_options['password'] = get_option('webx_reguest_password');
-        $new_options['uri']      = get_option('webx_reguest_uri');
-        $new_options['form_mapping']
-        delete_option('webx_reguest_form');
-    }
-    update_option('webx_reguest_migration_done', true);
-}
-add_action('admin_init', 'webx_reguest_run_migration');
+        $new_options = get_option('am_hotelfolio_reguest_options', []);
 
-function webx_reguest_sanitize_options($input) {
+        // Migrate old settings to the new single option array.
+        $new_options['active']       = get_option('webx_reguest_active');
+        $new_options['username']     = get_option('webx_reguest_username');
+        $new_options['password']     = get_option('webx_reguest_password');
+        $new_options['uri']          = get_option('webx_reguest_uri');
+        $new_options['form_mapping'] = get_option('webx_reguest_form', []);
+
+        // Save the new, consolidated options.
+        update_option('am_hotelfolio_reguest_options', $new_options);
+
+        // Clean up by deleting the old, separate options.
+        delete_option('webx_reguest_active');
+        delete_option('webx_reguest_username');
+        delete_option('webx_reguest_password');
+        delete_option('webx_reguest_uri');
+        delete_option('webx_reguest_form');
+
+        // Set the flag to ensure this migration runs only once.
+        update_option($migration_flag, true);
+    }
+}
+add_action('admin_init', 'am_hotelfolio_reguest_run_migration');
+
+function am_hotelfolio_reguest_sanitize_options($input) {
     $sanitized_input = [];
-    $options = get_option('webx_reguest_options');
+    $options = get_option('am_hotelfolio_reguest_options');
 
     $sanitized_input['active'] = isset($input['active']) ? '1' : null;
     $sanitized_input['username'] = isset($input['username']) ? sanitize_text_field($input['username']) : '';
@@ -253,36 +266,36 @@ function webx_reguest_sanitize_options($input) {
         $sanitized_input['password'] = $options['password'] ?? '';
     }
 
-    if (isset($input['form']) && is_array($input['form'])) {
-        $sanitized_input['form'] = [];
-        foreach ($input['form'] as $key => $value) {
-            $sanitized_input['form'][sanitize_key($key)] = sanitize_text_field($value);
+    if (isset($input['form_mapping']) && is_array($input['form_mapping'])) {
+        $sanitized_input['form_mapping'] = [];
+        foreach ($input['form_mapping'] as $key => $value) {
+            $sanitized_input['form_mapping'][sanitize_key($key)] = sanitize_text_field($value);
         }
     }
 
     return $sanitized_input;
 }
 
-function webx_reguest_field_active_cb() {
-    $options = get_option('webx_reguest_options');
+function am_hotelfolio_reguest_field_active_cb() {
+    $options = get_option('am_hotelfolio_reguest_options');
     $checked = isset($options['active']) ? 'checked' : '';
-    echo "<input type='checkbox' name='webx_reguest_options[active]' value='1' {$checked} />";
+    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[active]' value='1' {$checked} />";
 }
 
-function webx_reguest_field_text_cb($args) {
-    $options = get_option('webx_reguest_options');
+function am_hotelfolio_reguest_field_text_cb($args) {
+    $options = get_option('am_hotelfolio_reguest_options');
     $id = $args['id'];
     $type = $args['type'];
     $value = $options[$id] ?? '';
     $placeholder = ($type === 'password') ? 'Zum Ändern neu eingeben' : '';
     $value_attr = ($type === 'password') ? '' : 'value="' . esc_attr($value) . '"';
 
-    echo "<input type='{$type}' name='webx_reguest_options[{$id}]' {$value_attr} placeholder='{$placeholder}' class='regular-text' />";
+    echo "<input type='{$type}' name='am_hotelfolio_reguest_options[{$id}]' {$value_attr} placeholder='{$placeholder}' class='regular-text' />";
 }
 
-function webx_reguest_field_mapping_cb() {
-    $options = get_option('webx_reguest_options');
-    $mappings = $options['form'] ?? [];
+function am_hotelfolio_reguest_field_mapping_cb() {
+    $options = get_option('am_hotelfolio_reguest_options');
+    $mappings = $options['form_mapping'] ?? [];
     $api_fields = [
         'ArrivalDate' => 'Ankunft',
         'DepartureDate' => 'Abreise',
@@ -304,19 +317,19 @@ function webx_reguest_field_mapping_cb() {
         'LanguageCode' => 'Sprache',
     ];
 
-    echo '<div id="webx_reguest_form_mapping">';
+    echo '<div id="am_hotelfolio_reguest_form_mapping">';
     if (!empty($mappings)) {
         foreach ($mappings as $key => $value) {
             echo '<div class="mapping-row">';
-            echo '<label for="webx_reguest_options_form_' . esc_attr($key) . '">' . esc_html($key) . '</label>';
-            echo '<input type="text" name="webx_reguest_options[form][' . esc_attr($key) . ']" value="' . esc_attr($value) . '" placeholder="Contact Form 7 field name" data-key="' . esc_attr($key) . '" />';
+            echo '<label for="am_hotelfolio_reguest_options_form_mapping_' . esc_attr($key) . '">' . esc_html($key) . '</label>';
+            echo '<input type="text" name="am_hotelfolio_reguest_options[form_mapping][' . esc_attr($key) . ']" value="' . esc_attr($value) . '" placeholder="Contact Form 7 field name" data-key="' . esc_attr($key) . '" />';
             echo '</div>';
         }
     }
     echo '</div>';
 
     echo '<div style="margin-top: 20px;">';
-    echo '<select id="webx_reguest_prototypes">';
+    echo '<select id="am_hotelfolio_reguest_prototypes">';
     echo '<option value="">-- API Feld auswählen --</option>';
     foreach ($api_fields as $key => $label) {
         echo '<option value="' . esc_attr($key) . '">' . esc_html($label) . '</option>';
@@ -328,16 +341,16 @@ function webx_reguest_field_mapping_cb() {
 }
 
 
-function webx_reguest_options_page_html() {
+function am_hotelfolio_reguest_options_page_html() {
     if (!current_user_can('manage_options')) {
         return;
     }
     ?>
-    <div class="wrap webx-reguest-settings-form">
+    <div class="wrap am-hotelfolio-reguest-settings-form">
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         <form action="options.php" method="post">
             <?php
-            settings_fields('webx_reguest_options_group');
+            settings_fields('am_hotelfolio_reguest_options_group');
             do_settings_sections('am-hotelfolio-reguest');
             submit_button('Änderungen speichern');
             ?>
