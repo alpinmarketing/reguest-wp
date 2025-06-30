@@ -46,6 +46,16 @@ class ReguestAPIClient {
     private $client;
     // Options for client
     private $options;
+    // A list of all known API keys in their correct PascalCase format.
+    private static $knownApiKeys = [
+        'EmailAddress', 'ArrivalDate', 'DepartureDate', 'MealType', 'GuestUserType',
+        'Gender', 'Anrede', 'Title', 'FirstName', 'LastName', 'FullName', 'FamilyName',
+        'CompanyName', 'BirthDate', 'StreetName', 'PostalCode', 'CityName', 'CountryCode',
+        'PhoneNumber', 'MobileNumber', 'FaxNumber', 'Text', 'LanguageCode',
+        'NewsletterSubscription', 'AlternativeArrivalDate', 'AlternativeDepartureDate',
+        'OfferName', 'OfferCode', 'ThirdPartyNotes', 'ForeignId', 'SourceOfBusiness',
+        'Adults', 'Children', 'ChildrenAges'
+    ];
 
     /**
      * __construct
@@ -106,15 +116,26 @@ class ReguestAPIClient {
             'Gender'        => 0,
         ];
 
+        // Create a map of lowercase keys to their correct PascalCase version for normalization.
+        // This makes the mapping in the admin settings case-insensitive.
+        $keyMap = [];
+        foreach (self::$knownApiKeys as $key) {
+            $keyMap[strtolower($key)] = $key;
+        }
+
         foreach ($fields as $apiKey => $formFieldName) {
             // Skip if the form field name is empty or the field wasn't submitted in the form
             if (empty($formFieldName) || !isset($form[$formFieldName]) || $form[$formFieldName] === '') {
                 continue;
             }
 
+            // Normalize the API key from the settings to the correct case (e.g., 'adults' -> 'Adults').
+            // If the key is not in our known list, we use it as-is to allow for future API fields.
+            $normalizedApiKey = $keyMap[strtolower($apiKey)] ?? $apiKey;
+
             $value = $form[$formFieldName];
 
-            if ($apiKey === 'Anrede') {
+            if ($normalizedApiKey === 'Anrede') {
                 switch ($value) {
                     case 'Herr': case 'Mr':
                         $request['Gender'] = 1;
@@ -126,32 +147,32 @@ class ReguestAPIClient {
                         $request['GuestUserType'] = 1;
                         break;
                 }
-            } elseif ($apiKey === 'CountryCode') {
+            } elseif ($normalizedApiKey === 'CountryCode') {
                 $countryCode = $this->get_country_code_from_name($value);
                 if ($countryCode) { // Only set if a valid code was found
-                    $request[$apiKey] = $countryCode;
+                    $request[$normalizedApiKey] = $countryCode;
                 }
                 // If no valid country code is found (e.g., for "Other Country"),
                 // the field is simply not added to the request, preventing an API error.
-            } elseif (in_array($apiKey, $dateFields)) {
+            } elseif (in_array($normalizedApiKey, $dateFields)) {
                 try {
-                    $request[$apiKey] = (new DateTime($value))->format('Y-m-d');
+                    $request[$normalizedApiKey] = (new DateTime($value))->format('Y-m-d');
                 } catch (Exception $e) {
                     // Handle invalid date format gracefully
-                    am_hotelfolio_reguest_log_error("Invalid date format for {$apiKey}: " . $value);
-                    $request[$apiKey] = null;
+                    am_hotelfolio_reguest_log_error("Invalid date format for {$normalizedApiKey}: " . $value);
+                    $request[$normalizedApiKey] = null;
                 }
-            } elseif ($apiKey === 'ChildrenAges') {
+            } elseif ($normalizedApiKey === 'ChildrenAges') {
                 // Clean the string and convert to an array of integers
                 $agesArray = array_filter(preg_split('/[,\s\.]+/', $value), 'is_numeric');
-                $request['RoomOccupancies'][0][$apiKey] = array_map('intval', $agesArray);
-            } elseif (in_array($apiKey, $booleanFields)) {
+                $request['RoomOccupancies'][0][$normalizedApiKey] = array_map('intval', $agesArray);
+            } elseif (in_array($normalizedApiKey, $booleanFields)) {
                 // Convert common string representations of 'true' to a boolean
-                $request[$apiKey] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
-            } elseif (in_array($apiKey, $roomOccupancies)) { // Handles 'Adults' and 'Children'
-                $request['RoomOccupancies'][0][$apiKey] = (int)$value;
+                $request[$normalizedApiKey] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+            } elseif (in_array($normalizedApiKey, $roomOccupancies)) { // Handles 'Adults' and 'Children'
+                $request['RoomOccupancies'][0][$normalizedApiKey] = (int)$value;
             } else {
-                $request[$apiKey] = $value;
+                $request[$normalizedApiKey] = $value;
             }
         }
 
