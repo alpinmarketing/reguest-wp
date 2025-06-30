@@ -367,18 +367,9 @@ function send_to_reguest($contact_form) {
 
     // Automatically populate meta data supported by the API
     $meta_data = [];
-    if (!empty($_SERVER['REMOTE_ADDR'])) {
-        $meta_data['ClientIpAddress'] = sanitize_text_field($_SERVER['REMOTE_ADDR']);
-    }
-    if (!empty($_SERVER['HTTP_USER_AGENT'])) {
-        $meta_data['UserAgent'] = sanitize_text_field($_SERVER['HTTP_USER_AGENT']);
-    }
-    if (!empty($_SERVER['HTTP_REFERER'])) {
-        $meta_data['OriginUrl'] = esc_url_raw($_SERVER['HTTP_REFERER']);
-    }
 
     // Add language code from CF7 locale, e.g., 'de_DE' -> 'de'
-    $locale = $contact_form->locale ?? '';
+    $locale = $contact_form->locale ?? null;
     if (!empty($locale)) {
         $meta_data['LanguageCode'] = substr($locale, 0, 2);
     }
