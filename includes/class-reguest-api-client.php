@@ -149,7 +149,8 @@ class ReguestAPIClient {
             $salutation = is_array($anredeValue) ? ($anredeValue[0] ?? null) : $anredeValue;
 
             if (is_string($salutation) && !empty($salutation)) {
-                switch (strtolower(trim($salutation))) {
+                // Handle Polylang for CF7, which wraps values in {}. We remove them and surrounding spaces before comparison.
+                switch (strtolower(trim($salutation, ' {}'))) {
                     case 'herr':
                     case 'mr':
                         $requestData['Gender'] = 1;
@@ -162,7 +163,6 @@ class ReguestAPIClient {
                 }
             }
 
-            $requestData['Gender'] = $anredeValue; // Debug Test
         }
 
         // --- 3. Final Payload Assembly ---
