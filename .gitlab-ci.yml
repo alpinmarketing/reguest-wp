@@ -31,6 +31,7 @@ deploy-live-job:
 
     variables:
         FAMILYRESORT_FTP_SERVER: 'sftp://familyresort.at'
+        FTP_REMOTE_FOLDER: 'html/wp-content/plugins/am-hotelfolio-reguest'
     script:
         - /restore_last_git_modified_time.sh
         - lftp -e "set ssl:verify-certificate no; set ftp:use-mdtm-overloaded true; open -p 222 $FAMILYRESORT_FTP_SERVER; user $FAMILYRESORT_LIVE_USER '$FAMILYRESORT_LIVE_PASS'; mirror -X .* -X .*/ --reverse --verbose --delete $PWD $FTP_REMOTE_FOLDER; bye"
