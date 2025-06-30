@@ -106,6 +106,7 @@ class ReguestAPIClient {
      */
     public function send(array $form, array $fields, array $meta_data = [], bool $debug = false): bool {
         $roomOccupancies = ['Adults', 'Children', 'ChildrenAges'];
+        $anredeValue = null; // Temporary variable to hold the salutation value for later processing.
         $dateFields = ['ArrivalDate', 'DepartureDate', 'AlternativeArrivalDate', 'AlternativeDepartureDate', 'BirthDate'];
         $booleanFields = ['NewsletterSubscription'];
 
@@ -114,6 +115,7 @@ class ReguestAPIClient {
             'MealType'      => 0,
             'GuestUserType' => 0,
             'Gender'        => 0,
+            'LanguageCode'  => 'de',
         ];
 
         // Create a map of lowercase keys to their correct PascalCase version for normalization.
@@ -135,18 +137,10 @@ class ReguestAPIClient {
 
             $value = $form[$formFieldName];
 
+            // The 'Anrede' field is not a direct API field but a meta field to determine Gender/GuestUserType.
+            // We capture its value here and process it after the loop.
             if ($normalizedApiKey === 'Anrede') {
-                switch ($value) {
-                    case 'Herr': case 'Mr':
-                        $request['Gender'] = 1;
-                        break;
-                    case 'Frau': case 'Mrs': case 'Ms':
-                        $request['Gender'] = 2;
-                        break;
-                    case 'Firma': case 'Company': // Corrected mapping: 1 = company
-                        $request['GuestUserType'] = 1;
-                        break;
-                }
+                $anredeValue = $value;
             } elseif ($normalizedApiKey === 'CountryCode') {
                 // Handle cases where CF7 might wrap a single select value in an array.
                 $countryName = is_array($value) ? ($value[0] ?? null) : $value;
@@ -186,6 +180,24 @@ class ReguestAPIClient {
                 } else {
                     $request[$normalizedApiKey] = $value;
                 }
+            }
+        }
+
+        // --- Apply logic based on special fields like 'Anrede' ---
+        // This is done after the main loop to ensure all data is present and to avoid ordering issues.
+        if ($anredeValue) {
+            // Normalize the salutation to be case-insensitive.
+            switch (strtolower(trim($anredeValue))) {
+                case 'herr': case 'mr':
+                    $request['Gender'] = 1;
+                    break;
+                case 'frau': case 'mrs': case 'ms':
+                    $request['Gender'] = 2;
+                    break;
+                case 'firma': case 'company':
+                    // This sets the guest type, which is then used in the business rules below.
+                    $request['GuestUserType'] = 1;
+                    break;
             }
         }
 
@@ -244,25 +256,12 @@ class ReguestAPIClient {
             default:
                 // Per API docs, for a person, use FirstName/LastName or FullName. Not Company/Family name.
                 unset($request['CompanyName'], $request['FamilyName']);
-                // If FullName is provided, it takes precedence over FirstName/LastName.
-                if (!isset($request['FirstName']) && !isset($request['LastName']) && !empty($request['FullName'])) {
-                    // Re:Guest will split the name automatically.
-                }
                 break;
         }
 
 
         // Merge automatically populated metadata. Values from $request (form mapping) will overwrite metadata.
         $request = array_merge($meta_data, $request);
-
-        // Set LanguageCode as a fallback if not set by mapping or metadata
-        if (!isset($request['LanguageCode'])) {
-            if (isset($form['form_title']) && strpos($form['form_title'], 'EN') !== false) {
-                $request['LanguageCode'] = 'en';
-            } else {
-                $request['LanguageCode'] = 'de';
-            }
-        }
 
         // If debug mode is active, log the request payload and skip the actual API call.
         if ($debug) {
@@ -388,7 +387,6 @@ function send_to_reguest($contact_form) {
     }
 
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
-        $form_data['form_title'] = strtoupper($contact_form->title());
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);
         $is_debug_mode = !empty($options['debug']);
         // Call the API but do not return its result to prevent blocking the CF7 submission.
