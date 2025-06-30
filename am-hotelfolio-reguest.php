@@ -347,7 +347,7 @@ function send_to_reguest($contact_form) {
     }
 
     // Add language code from CF7 locale, e.g., 'de_DE' -> 'de'
-    $locale = $contact_form->get_locale();
+    $locale = $contact_form->locale ?? '';
     if (!empty($locale)) {
         $meta_data['LanguageCode'] = substr($locale, 0, 2);
     }
