@@ -1,0 +1,20 @@
+.webx-reguest-settings-form .form-table th {
+    width: 150px;
+}
+
+.webx-reguest-settings-form .form-table td p.description {
+    max-width: 400px;
+}
+
+.webx-reguest-settings-form #webx_reguest_form_mapping .mapping-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.webx-reguest-settings-form #webx_reguest_form_mapping .mapping-row label {
+    font-family: monospace;
+    width: 150px;
+    margin-right: 10px;
+    font-weight: bold;
+}
