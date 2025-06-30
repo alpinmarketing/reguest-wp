@@ -186,18 +186,23 @@ class ReguestAPIClient {
         // --- Apply logic based on special fields like 'Anrede' ---
         // This is done after the main loop to ensure all data is present and to avoid ordering issues.
         if ($anredeValue) {
-            // Normalize the salutation to be case-insensitive.
-            switch (strtolower(trim($anredeValue))) {
-                case 'herr': case 'mr':
-                    $request['Gender'] = 1;
-                    break;
-                case 'frau': case 'mrs': case 'ms':
-                    $request['Gender'] = 2;
-                    break;
-                case 'firma': case 'company':
-                    // This sets the guest type, which is then used in the business rules below.
-                    $request['GuestUserType'] = 1;
-                    break;
+            // Handle cases where CF7 might wrap a single select value in an array.
+            $salutation = is_array($anredeValue) ? ($anredeValue[0] ?? null) : $anredeValue;
+
+            if (is_string($salutation) && !empty($salutation)) {
+                // Normalize the salutation to be case-insensitive.
+                switch (strtolower(trim($salutation))) {
+                    case 'herr': case 'mr':
+                        $request['Gender'] = 1;
+                        break;
+                    case 'frau': case 'mrs': case 'ms':
+                        $request['Gender'] = 2;
+                        break;
+                    case 'firma': case 'company':
+                        // This sets the guest type, which is then used in the business rules below.
+                        $request['GuestUserType'] = 1;
+                        break;
+                }
             }
         }
 
