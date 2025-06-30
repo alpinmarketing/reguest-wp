@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 2.6
+ * Version: 2.7
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
@@ -323,7 +323,8 @@ function am_hotelfolio_reguest_field_mapping_cb() {
         foreach ($mappings as $key => $value) {
             echo '<div class="mapping-row">';
             echo '<label for="am_hotelfolio_reguest_options_form_mapping_' . esc_attr($key) . '">' . esc_html($key) . '</label>';
-            echo '<input type="text" name="am_hotelfolio_reguest_options[form_mapping][' . esc_attr($key) . ']" value="' . esc_attr($value) . '" placeholder="Contact Form 7 field name" data-key="' . esc_attr($key) . '" />';
+            echo '<input type="text" name="am_hotelfolio_reguest_options[form_mapping][' . esc_attr($key) . ']" value="' . esc_attr($value) . '" placeholder="Contact Form 7 field name" data-key="' . esc_attr($key) . '" class="regular-text" />';
+            echo '<button type="button" class="button button-secondary remove-mapping-row">Entfernen</button>';
             echo '</div>';
         }
     }
@@ -337,7 +338,6 @@ function am_hotelfolio_reguest_field_mapping_cb() {
     }
     echo '</select> ';
     echo '<button type="button" class="button prototype-button" data-func="add">Hinzufügen</button> ';
-    echo '<button type="button" class="button prototype-button" data-func="del">Entfernen</button>';
     echo '</div>';
 }
 

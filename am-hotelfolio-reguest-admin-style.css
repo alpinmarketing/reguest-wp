@@ -19,3 +19,7 @@
     flex-shrink: 0; /* Prevents the label from shrinking if space is limited */
     font-weight: bold;
 }
+
+.am-hotelfolio-reguest-settings-form #am_hotelfolio_reguest_form_mapping .mapping-row input[type="text"] {
+    flex-grow: 1;
+}

@@ -23,14 +23,20 @@
                             <input type="text"
                                    name="am_hotelfolio_reguest_options[form_mapping][${name}]"
                                    value=""
-                                   placeholder="Contact Form 7 field name"
-                                   data-key="${name}" />
+                                   placeholder="Contact Form 7 field name"                                   
+                                   data-key="${name}"
+                                   class="regular-text" />
+                            <button type="button" class="button button-secondary remove-mapping-row">Entfernen</button>
                         </div>`;
                     wrapper.append(newRow);
                 }
-            } else if (func === 'del') {
-                wrapper.find('input[data-key="' + name + '"]').closest('.mapping-row').remove();
             }
+        });
+
+        // Event delegation for dynamically added remove buttons
+        $('#am_hotelfolio_reguest_form_mapping').on('click', '.remove-mapping-row', function (e) {
+            e.preventDefault();
+            $(this).closest('.mapping-row').remove();
         });
     });
 
