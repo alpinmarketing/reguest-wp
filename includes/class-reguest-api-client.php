@@ -65,10 +65,11 @@ class ReguestAPIClient {
      * @param array $form The submitted form data.
      * @param array $fields The mapping of API keys to form field names.
      * @param array $meta_data Additional data to include in the request.
+     * @param bool $test_mode If true, the request is logged but not sent.
      * 
      * @return bool
      */
-    public function send(array $form, array $fields, array $meta_data = [], bool $debug = false): bool {
+    public function send(array $form, array $fields, array $meta_data = [], bool $test_mode = false): bool {
         // --- 1. Data Collection ---
         // This section gathers all data from the form based on the mapping.
         $requestData = [];
@@ -229,11 +230,11 @@ class ReguestAPIClient {
 
 
         // If debug mode is active, log the request payload and skip the actual API call.
-        if ($debug) {
+        if ($test_mode) {
             // Use JSON_PRETTY_PRINT for better readability in the log.
             $json_payload = json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            am_hotelfolio_reguest_log_error("DEBUG MODUS: API-Aufruf übersprungen. Folgende Daten wären gesendet worden:\n" . $json_payload);
-            return true; // Simulate a successful submission for debugging purposes.
+            am_hotelfolio_reguest_log_error("TESTMODUS: API-Aufruf übersprungen. Folgende Daten wären gesendet worden:\n" . $json_payload);
+            return true; // Simulate a successful submission for testing purposes.
         }
 
         $this->options[CURLOPT_POSTFIELDS] = json_encode($request);

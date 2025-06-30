@@ -28,6 +28,7 @@ function am_hotelfolio_reguest_settings_init() {
 
     add_settings_field('am_hotelfolio_reguest_active', 'Plugin aktiv', 'am_hotelfolio_reguest_field_active_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section');
     add_settings_field('am_hotelfolio_reguest_debug', 'Debug Modus', 'am_hotelfolio_reguest_field_debug_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section');
+    add_settings_field('am_hotelfolio_reguest_test_mode', 'Testmodus', 'am_hotelfolio_reguest_field_test_mode_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section');
     add_settings_field('am_hotelfolio_reguest_username', 'Benutzername', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'username', 'type' => 'text']);
     add_settings_field('am_hotelfolio_reguest_password', 'Passwort', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'password', 'type' => 'password']);
     add_settings_field('am_hotelfolio_reguest_uri', 'API Link', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'uri', 'type' => 'url']);
@@ -58,6 +59,7 @@ function am_hotelfolio_reguest_sanitize_options($input) {
 
     $sanitized_input['active'] = isset($input['active']) ? '1' : null;
     $sanitized_input['debug'] = isset($input['debug']) ? '1' : null;
+    $sanitized_input['test_mode'] = isset($input['test_mode']) ? '1' : null;
     $sanitized_input['username'] = isset($input['username']) ? sanitize_text_field($input['username']) : '';
     $sanitized_input['uri'] = isset($input['uri']) ? esc_url_raw($input['uri']) : '';
 
@@ -88,7 +90,13 @@ function am_hotelfolio_reguest_field_active_cb() {
 function am_hotelfolio_reguest_field_debug_cb() {
     $options = get_option('am_hotelfolio_reguest_options');
     $checked = isset($options['debug']) ? 'checked' : '';
-    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[debug]' value='1' {$checked} /> <p class='description'>Wenn aktiviert, werden Fehler auf dieser Seite protokolliert, anstatt im Server-Log. Deaktivieren Sie dies im Live-Betrieb.</p>";
+    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[debug]' value='1' {$checked} /> <p class='description'>Wenn aktiviert, werden detaillierte Fehler und Nachrichten auf dieser Seite protokolliert. Im Live-Betrieb sollte dies deaktiviert sein, Fehler werden dann im Standard-Server-Log gespeichert.</p>";
+}
+
+function am_hotelfolio_reguest_field_test_mode_cb() {
+    $options = get_option('am_hotelfolio_reguest_options');
+    $checked = isset($options['test_mode']) ? 'checked' : '';
+    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[test_mode]' value='1' {$checked} /> <p class='description'>Wenn aktiviert, wird der API-Aufruf nur simuliert und die Daten werden nicht gesendet. Die erstellten Daten werden im Debug-Log angezeigt (wenn der Debug-Modus ebenfalls aktiv ist).</p>";
 }
 
 function am_hotelfolio_reguest_field_text_cb($args) {
