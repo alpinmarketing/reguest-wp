@@ -185,10 +185,10 @@ class ReguestAPIClient {
         }
 
 
-        // Merge automatically populated metadata
-        $request = array_merge($request, $meta_data);
+        // Merge automatically populated metadata. Values from $request (form mapping) will overwrite metadata.
+        $request = array_merge($meta_data, $request);
 
-        // Set LanguageCode as a fallback if not mapped
+        // Set LanguageCode as a fallback if not set by mapping or metadata
         if (!isset($request['LanguageCode'])) {
             if (isset($form['form_title']) && strpos($form['form_title'], 'EN') !== false) {
                 $request['LanguageCode'] = 'en';
@@ -265,6 +265,12 @@ function send_to_reguest($contact_form) {
     }
     if (!empty($_SERVER['HTTP_REFERER'])) {
         $meta_data['OriginUrl'] = esc_url_raw($_SERVER['HTTP_REFERER']);
+    }
+
+    // Add language code from CF7 locale, e.g., 'de_DE' -> 'de'
+    $locale = $contact_form->get_locale();
+    if (!empty($locale)) {
+        $meta_data['LanguageCode'] = substr($locale, 0, 2);
     }
 
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
