@@ -126,6 +126,13 @@ class ReguestAPIClient {
                         $request['GuestUserType'] = 1;
                         break;
                 }
+            } elseif ($apiKey === 'CountryCode') {
+                $countryCode = $this->get_country_code_from_name($value);
+                if ($countryCode) { // Only set if a valid code was found
+                    $request[$apiKey] = $countryCode;
+                }
+                // If no valid country code is found (e.g., for "Other Country"),
+                // the field is simply not added to the request, preventing an API error.
             } elseif (in_array($apiKey, $dateFields)) {
                 try {
                     $request[$apiKey] = (new DateTime($value))->format('Y-m-d');
@@ -258,6 +265,52 @@ class ReguestAPIClient {
         // Check for the 'Success' flag in the API response
         $is_success = isset($return['Success']) && $return['Success'] === true;
         return $is_success;
+    }
+
+    /**
+     * Converts a country name to its ISO 3166-1 alpha-2 code.
+     *
+     * @param string $name The full name of the country provided by the form.
+     * @return string|null The two-letter country code or null if not found.
+     */
+    private function get_country_code_from_name(string $name): ?string
+    {
+        // Using a static variable to avoid re-creating the map on every call within the same request.
+        static $countryMap = [
+            'deutschland' => 'DE',
+            'österreich' => 'AT',
+            'schweiz' => 'CH',
+            'belgien' => 'BE',
+            'bulgarien' => 'BG',
+            'kroatien' => 'HR',
+            'tschechien' => 'CZ',
+            'dänemark' => 'DK',
+            'estland' => 'EE',
+            'finnland' => 'FI',
+            'frankreich' => 'FR',
+            'griechenland' => 'GR',
+            'ungarn' => 'HU',
+            'irland' => 'IE',
+            'italien' => 'IT',
+            'lettland' => 'LV',
+            'litauen' => 'LT',
+            'luxemburg' => 'LU',
+            'malta' => 'MT',
+            'niederlande' => 'NL',
+            'polen' => 'PL',
+            'portugal' => 'PT',
+            'rumänien' => 'RO',
+            'slowakei' => 'SK',
+            'slowenien' => 'SI',
+            'spanien' => 'ES',
+            'schweden' => 'SE',
+            'zypern' => 'CY',
+            'united kingdom' => 'GB',
+            'usa' => 'US',
+        ];
+
+        $normalizedName = strtolower(trim($name));
+        return $countryMap[$normalizedName] ?? null;
     }
 }
 
