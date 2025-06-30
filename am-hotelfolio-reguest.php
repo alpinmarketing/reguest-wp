@@ -148,11 +148,19 @@ class ReguestAPIClient {
                         break;
                 }
             } elseif ($normalizedApiKey === 'CountryCode') {
-                $countryCode = $this->get_country_code_from_name($value);
-                if ($countryCode) { // Only set if a valid code was found
-                    $request[$normalizedApiKey] = $countryCode;
+                // Handle cases where CF7 might wrap a single select value in an array.
+                $countryName = is_array($value) ? ($value[0] ?? null) : $value;
+
+                if (is_string($countryName) && !empty($countryName)) {
+                    $countryCode = $this->get_country_code_from_name($countryName);
+                    if ($countryCode) { // Only set if a valid code was found
+                        $request[$normalizedApiKey] = $countryCode;
+                    } else {
+                        am_hotelfolio_reguest_log_error("Country name '{$countryName}' could not be mapped to an ISO code and was skipped.");
+                    }
                 } else {
-                    am_hotelfolio_reguest_log_error("Country name '{$value}' could not be mapped to an ISO code and was skipped.");
+                    // Log if the value was unusable (e.g., empty array or not a string)
+                    am_hotelfolio_reguest_log_error("Invalid value received for CountryCode; expected a string, but got something else. Value skipped.");
                 }
             } elseif (in_array($normalizedApiKey, $dateFields)) {
                 try {
