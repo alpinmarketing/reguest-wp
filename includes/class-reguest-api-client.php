@@ -161,6 +161,8 @@ class ReguestAPIClient {
                         break;
                 }
             }
+
+            $requestData['Gender'] = $anredeValue; // Debug Test
         }
 
         // --- 3. Final Payload Assembly ---
