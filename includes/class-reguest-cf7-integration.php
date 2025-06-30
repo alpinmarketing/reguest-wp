@@ -59,8 +59,9 @@ function send_to_reguest($contact_form) {
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);
         $is_test_mode = !empty($options['test_mode']);
-        // Call the API but do not return its result to prevent blocking the CF7 submission.
-        $apiClient->send($form_data, $options['form_mapping'] ?? [], $meta_data, $is_test_mode);
+        $is_debug_mode = !empty($options['debug']);
+        // Call the API. The result is not used here to prevent blocking the CF7 submission flow.
+        $apiClient->send($form_data, $options['form_mapping'] ?? [], $meta_data, $is_test_mode, $is_debug_mode);
     }
 }
 add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );

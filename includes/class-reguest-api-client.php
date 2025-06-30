@@ -66,10 +66,11 @@ class ReguestAPIClient {
      * @param array $fields The mapping of API keys to form field names.
      * @param array $meta_data Additional data to include in the request.
      * @param bool $test_mode If true, the request is logged but not sent.
+     * @param bool $debug_mode If true, detailed request/response info is logged.
      * 
      * @return bool
      */
-    public function send(array $form, array $fields, array $meta_data = [], bool $test_mode = false): bool {
+    public function send(array $form, array $fields, array $meta_data = [], bool $test_mode = false, bool $debug_mode = false): bool {
         // --- 1. Data Collection ---
         // This section gathers all data from the form based on the mapping.
         $requestData = [];
@@ -229,14 +230,21 @@ class ReguestAPIClient {
         unset($request['CompanyName'], $request['FamilyName']);
 
 
-        // If debug mode is active, log the request payload and skip the actual API call.
+        // --- 5. Send & Log ---
+
+        // If debug mode is active, log the request payload that will be sent or simulated.
+        if ($debug_mode) {
+            $json_payload_for_log = json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            am_hotelfolio_reguest_log_error("API Request Payload:\n" . $json_payload_for_log);
+        }
+
+        // If test mode is active, we skip the actual API call.
         if ($test_mode) {
-            // Use JSON_PRETTY_PRINT for better readability in the log.
-            $json_payload = json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-            am_hotelfolio_reguest_log_error("TESTMODUS: API-Aufruf übersprungen. Folgende Daten wären gesendet worden:\n" . $json_payload);
+            am_hotelfolio_reguest_log_error("TESTMODUS: API-Aufruf übersprungen.");
             return true; // Simulate a successful submission for testing purposes.
         }
 
+        // --- 6. Execute API Call ---
         $this->options[CURLOPT_POSTFIELDS] = json_encode($request);
         curl_setopt_array($this->client,$this->options);
         $response_body = curl_exec($this->client);
@@ -249,6 +257,12 @@ class ReguestAPIClient {
 
         // Check for non-successful HTTP status codes
         $http_code = curl_getinfo($this->client, CURLINFO_HTTP_CODE);
+
+        // If debug mode is active, log the raw response from the API, regardless of status code.
+        if ($debug_mode) {
+            am_hotelfolio_reguest_log_error("API Response (HTTP {$http_code}):\n" . $response_body);
+        }
+
         if ($http_code < 200 || $http_code >= 300) {
             // Try to decode the error response for a more specific message
             $error_details = json_decode($response_body, true);
@@ -257,7 +271,10 @@ class ReguestAPIClient {
             } else {
                 $error_message = "Raw Response: " . $response_body;
             }
-            am_hotelfolio_reguest_log_error("HTTP Error: Status code {$http_code}. " . $error_message);
+            // This log is redundant if debug mode is on (as it's already logged above), but crucial if it's off.
+            if (!$debug_mode) {
+                am_hotelfolio_reguest_log_error("HTTP Error: Status code {$http_code}. " . $error_message);
+            }
             return false;
         }
 
@@ -271,6 +288,11 @@ class ReguestAPIClient {
 
         // Check for the 'Success' flag in the API response
         $is_success = isset($return['Success']) && $return['Success'] === true;
+
+        if ($debug_mode) {
+            am_hotelfolio_reguest_log_error("API Call Result: " . ($is_success ? 'Success' : 'Failure'));
+        }
+
         return $is_success;
     }
 
