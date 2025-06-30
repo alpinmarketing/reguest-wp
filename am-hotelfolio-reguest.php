@@ -9,6 +9,32 @@
  */
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
+/**
+ * Logs messages either to a transient for debugging or to the standard PHP error log.
+ *
+ * @param string $message The error message to log.
+ */
+function am_hotelfolio_reguest_log_error(string $message) {
+    $options = get_option('am_hotelfolio_reguest_options');
+
+    if (!empty($options['debug'])) {
+        $log_transient_key = 'am_hotelfolio_reguest_debug_log';
+        $logs = get_transient($log_transient_key);
+        if (false === $logs || !is_array($logs)) {
+            $logs = [];
+        }
+
+        // Add new log entry to the beginning of the array with a timestamp.
+        array_unshift($logs, date('Y-m-d H:i:s') . ' - ' . $message);
+
+        // Keep the log from growing indefinitely (e.g., max 100 entries).
+        $logs = array_slice($logs, 0, 100);
+
+        set_transient($log_transient_key, $logs, WEEK_IN_SECONDS);
+    } else {
+        error_log('ReGuest Plugin: ' . $message);
+    }
+}
 
 /**
  * Simple class for Reguest Calls 
@@ -105,7 +131,7 @@ class ReguestAPIClient {
                     $request[$apiKey] = (new DateTime($value))->format('Y-m-d');
                 } catch (Exception $e) {
                     // Handle invalid date format gracefully
-                    error_log("ReGuest Plugin: Invalid date format for {$apiKey}: " . $value);
+                    am_hotelfolio_reguest_log_error("Invalid date format for {$apiKey}: " . $value);
                     $request[$apiKey] = null;
                 }
             } elseif ($apiKey === 'ChildrenAges') {
@@ -126,23 +152,23 @@ class ReguestAPIClient {
 
         // 1. Validate Email Address format
         if (isset($request['EmailAddress']) && !filter_var($request['EmailAddress'], FILTER_VALIDATE_EMAIL)) {
-            error_log("ReGuest Plugin: Aborting send due to invalid email address format: " . $request['EmailAddress']);
+            am_hotelfolio_reguest_log_error("Aborting send due to invalid email address format: " . $request['EmailAddress']);
             return false; // Stop processing if email is invalid
         }
 
         // 2. Validate Date Plausibility
         try {
             if (isset($request['ArrivalDate'], $request['DepartureDate']) && new DateTime($request['ArrivalDate']) >= new DateTime($request['DepartureDate'])) {
-                error_log("ReGuest Plugin: Aborting send. DepartureDate must be after ArrivalDate.");
+                am_hotelfolio_reguest_log_error("Aborting send. DepartureDate must be after ArrivalDate.");
                 return false;
             }
             if (isset($request['AlternativeArrivalDate'], $request['AlternativeDepartureDate']) && new DateTime($request['AlternativeArrivalDate']) >= new DateTime($request['AlternativeDepartureDate'])) {
-                error_log("ReGuest Plugin: Aborting send. AlternativeDepartureDate must be after AlternativeArrivalDate.");
+                am_hotelfolio_reguest_log_error("Aborting send. AlternativeDepartureDate must be after AlternativeArrivalDate.");
                 return false;
             }
         } catch (Exception $e) {
             // This case is already handled during date parsing, but serves as a safeguard.
-            error_log("ReGuest Plugin: Aborting send due to invalid date for comparison. " . $e->getMessage());
+            am_hotelfolio_reguest_log_error("Aborting send due to invalid date for comparison. " . $e->getMessage());
             return false;
         }
 
@@ -151,7 +177,7 @@ class ReguestAPIClient {
             $numChildren = $request['RoomOccupancies'][0]['Children'] ?? 0;
             $numAges = isset($request['RoomOccupancies'][0]['ChildrenAges']) ? count($request['RoomOccupancies'][0]['ChildrenAges']) : 0;
             if ($numChildren > 0 && $numChildren !== $numAges) {
-                error_log("ReGuest Plugin: Aborting send. Mismatch between number of children ({$numChildren}) and provided ages ({$numAges}).");
+                am_hotelfolio_reguest_log_error("Aborting send. Mismatch between number of children ({$numChildren}) and provided ages ({$numAges}).");
                 return false;
             }
         }
@@ -203,7 +229,7 @@ class ReguestAPIClient {
 
         // Check for cURL errors
         if (curl_errno($this->client)) {
-            error_log('ReGuest Plugin cURL Error: ' . curl_error($this->client));
+            am_hotelfolio_reguest_log_error('cURL Error: ' . curl_error($this->client));
             return false;
         }
 
@@ -217,7 +243,7 @@ class ReguestAPIClient {
             } else {
                 $error_message = "Raw Response: " . $response_body;
             }
-            error_log("ReGuest Plugin HTTP Error: Status code {$http_code}. " . $error_message);
+            am_hotelfolio_reguest_log_error("HTTP Error: Status code {$http_code}. " . $error_message);
             return false;
         }
 
@@ -225,7 +251,7 @@ class ReguestAPIClient {
 
         // Check for JSON decoding errors
         if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log('ReGuest Plugin JSON Decode Error: ' . json_last_error_msg());
+            am_hotelfolio_reguest_log_error('JSON Decode Error: ' . json_last_error_msg());
             return false;
         }
 
@@ -276,7 +302,8 @@ function send_to_reguest($contact_form) {
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
         $form_data['form_title'] = strtoupper($contact_form->title);
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);
-        return $apiClient->send($form_data, $options['form_mapping'] ?? [], $meta_data);
+        // Call the API but do not return its result to prevent blocking the CF7 submission.
+        $apiClient->send($form_data, $options['form_mapping'] ?? [], $meta_data);
     }
 }
 add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
@@ -307,6 +334,7 @@ function am_hotelfolio_reguest_settings_init() {
     add_settings_section('am_hotelfolio_reguest_main_section', 'API Credentials', null, 'am_reguest');
 
     add_settings_field('am_hotelfolio_reguest_active', 'Plugin aktiv', 'am_hotelfolio_reguest_field_active_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section');
+    add_settings_field('am_hotelfolio_reguest_debug', 'Debug Modus', 'am_hotelfolio_reguest_field_debug_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section');
     add_settings_field('am_hotelfolio_reguest_username', 'Benutzername', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'username', 'type' => 'text']);
     add_settings_field('am_hotelfolio_reguest_password', 'Passwort', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'password', 'type' => 'password']);
     add_settings_field('am_hotelfolio_reguest_uri', 'API Link', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'uri', 'type' => 'url']);
@@ -315,6 +343,21 @@ function am_hotelfolio_reguest_settings_init() {
     add_settings_field('am_hotelfolio_reguest_form_mapping', 'API Field => Form Field', 'am_hotelfolio_reguest_field_mapping_cb', 'am_reguest', 'am_hotelfolio_reguest_form_section');
 }
 add_action('admin_init', 'am_hotelfolio_reguest_settings_init');
+
+/**
+ * Handle admin actions, like clearing the debug log.
+ */
+function am_hotelfolio_reguest_handle_admin_actions() {
+    if (isset($_GET['page']) && $_GET['page'] === 'am-hotelfolio-reguest' && isset($_GET['action']) && $_GET['action'] === 'clear_log') {
+        if (isset($_GET['_wpnonce']) && wp_verify_nonce(sanitize_key($_GET['_wpnonce']), 'am_reguest_clear_log_action')) {
+            delete_transient('am_hotelfolio_reguest_debug_log');
+            // Redirect to the settings page with a success message.
+            wp_safe_redirect(admin_url('admin.php?page=am-hotelfolio-reguest&log_cleared=1'));
+            exit;
+        }
+    }
+}
+add_action('admin_init', 'am_hotelfolio_reguest_handle_admin_actions');
 
 /**
  * Run a one-time migration of old settings to the new options array.
@@ -369,6 +412,7 @@ function am_hotelfolio_reguest_sanitize_options($input) {
     $options = get_option('am_hotelfolio_reguest_options');
 
     $sanitized_input['active'] = isset($input['active']) ? '1' : null;
+    $sanitized_input['debug'] = isset($input['debug']) ? '1' : null;
     $sanitized_input['username'] = isset($input['username']) ? sanitize_text_field($input['username']) : '';
     $sanitized_input['uri'] = isset($input['uri']) ? esc_url_raw($input['uri']) : '';
 
@@ -394,6 +438,12 @@ function am_hotelfolio_reguest_field_active_cb() {
     $options = get_option('am_hotelfolio_reguest_options');
     $checked = isset($options['active']) ? 'checked' : '';
     echo "<input type='checkbox' name='am_hotelfolio_reguest_options[active]' value='1' {$checked} />";
+}
+
+function am_hotelfolio_reguest_field_debug_cb() {
+    $options = get_option('am_hotelfolio_reguest_options');
+    $checked = isset($options['debug']) ? 'checked' : '';
+    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[debug]' value='1' {$checked} /> <p class='description'>Wenn aktiviert, werden Fehler auf dieser Seite protokolliert, anstatt im Server-Log. Deaktivieren Sie dies im Live-Betrieb.</p>";
 }
 
 function am_hotelfolio_reguest_field_text_cb($args) {
@@ -476,9 +526,13 @@ function am_hotelfolio_reguest_options_page_html() {
     if (!current_user_can('manage_options')) {
         return;
     }
+    $options = get_option('am_hotelfolio_reguest_options');
     ?>
     <div class="wrap am-hotelfolio-reguest-settings-form">
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+        <?php if (isset($_GET['log_cleared'])) : ?>
+            <div id="message" class="updated notice is-dismissible"><p>Debug-Log wurde geleert.</p></div>
+        <?php endif; ?>
         <form action="options.php" method="post">
             <?php
             settings_fields('am_hotelfolio_reguest_options_group');
@@ -486,6 +540,23 @@ function am_hotelfolio_reguest_options_page_html() {
             submit_button('Änderungen speichern');
             ?>
         </form>
+        <?php if (!empty($options['debug'])) : ?>
+            <hr>
+            <h2>Debug Log</h2>
+            <p>Hier werden die letzten 100 Fehler angezeigt, die bei der Kommunikation mit der Re:Guest API aufgetreten sind.</p>
+            <?php
+            $logs = get_transient('am_hotelfolio_reguest_debug_log');
+            if (!empty($logs) && is_array($logs)) {
+                echo '<textarea readonly style="width: 100%; height: 300px; background: #f0f0f0; font-family: monospace; white-space: pre; color: #333;">';
+                echo esc_textarea(implode("\n", $logs));
+                echo '</textarea>';
+                $clear_log_url = wp_nonce_url(admin_url('admin.php?page=am-hotelfolio-reguest&action=clear_log'), 'am_reguest_clear_log_action');
+                echo '<p><a href="' . esc_url($clear_log_url) . '" class="button button-secondary">Log leeren</a></p>';
+            } else {
+                echo '<p>Das Log ist leer.</p>';
+            }
+            ?>
+        <?php endif; ?>
     </div>
     <?php
 }
