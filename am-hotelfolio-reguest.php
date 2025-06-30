@@ -163,12 +163,20 @@ add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
  */
 
 function am_hotelfolio_reguest_add_admin_menu() {
-    add_options_page('Reguest API Settings', 'Reguest', 'manage_options', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_options_page_html');
+    add_submenu_page(
+        'hotelfolio_settings',
+        'Reguest API Settings',
+        'Reguest',
+        'manage_options',
+        'am_reguest',
+        'am_hotelfolio_reguest_options_page_html'
+    );
 }
 add_action('admin_menu', 'am_hotelfolio_reguest_add_admin_menu');
 
 function am_hotelfolio_reguest_enqueue_admin_assets($hook) {
-    if ('settings_page_am-hotelfolio-reguest' !== $hook) {
+    // The hook for a submenu page is {parent_slug}_page_{submenu_slug}
+    if ('hotelfolio_settings_page_am_reguest' !== $hook) {
         return;
     }
     wp_enqueue_style('am-hotelfolio-reguest-admin-style', plugin_dir_url(__FILE__) . 'am-hotelfolio-reguest-admin-style.css', [], '1.0');
@@ -180,15 +188,15 @@ add_action('admin_enqueue_scripts', 'am_hotelfolio_reguest_enqueue_admin_assets'
 function am_hotelfolio_reguest_settings_init() {
     register_setting('am_hotelfolio_reguest_options_group', 'am_hotelfolio_reguest_options', 'am_hotelfolio_reguest_sanitize_options');
 
-    add_settings_section('am_hotelfolio_reguest_main_section', 'API Credentials', null, 'am-hotelfolio-reguest');
+    add_settings_section('am_hotelfolio_reguest_main_section', 'API Credentials', null, 'am_reguest');
 
-    add_settings_field('am_hotelfolio_reguest_active', 'Plugin aktiv', 'am_hotelfolio_reguest_field_active_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section');
-    add_settings_field('am_hotelfolio_reguest_username', 'Benutzername', 'am_hotelfolio_reguest_field_text_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'username', 'type' => 'text']);
-    add_settings_field('am_hotelfolio_reguest_password', 'Passwort', 'am_hotelfolio_reguest_field_text_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'password', 'type' => 'password']);
-    add_settings_field('am_hotelfolio_reguest_uri', 'API Link', 'am_hotelfolio_reguest_field_text_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'uri', 'type' => 'url']);
+    add_settings_field('am_hotelfolio_reguest_active', 'Plugin aktiv', 'am_hotelfolio_reguest_field_active_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section');
+    add_settings_field('am_hotelfolio_reguest_username', 'Benutzername', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'username', 'type' => 'text']);
+    add_settings_field('am_hotelfolio_reguest_password', 'Passwort', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'password', 'type' => 'password']);
+    add_settings_field('am_hotelfolio_reguest_uri', 'API Link', 'am_hotelfolio_reguest_field_text_cb', 'am_reguest', 'am_hotelfolio_reguest_main_section', ['id' => 'uri', 'type' => 'url']);
 
-    add_settings_section('am_hotelfolio_reguest_form_section', 'Form Field Mapping', null, 'am-hotelfolio-reguest');
-    add_settings_field('am_hotelfolio_reguest_form_mapping', 'API Field => Form Field', 'am_hotelfolio_reguest_field_mapping_cb', 'am-hotelfolio-reguest', 'am_hotelfolio_reguest_form_section');
+    add_settings_section('am_hotelfolio_reguest_form_section', 'Form Field Mapping', null, 'am_reguest');
+    add_settings_field('am_hotelfolio_reguest_form_mapping', 'API Field => Form Field', 'am_hotelfolio_reguest_field_mapping_cb', 'am_reguest', 'am_hotelfolio_reguest_form_section');
 }
 add_action('admin_init', 'am_hotelfolio_reguest_settings_init');
 
@@ -341,7 +349,7 @@ function am_hotelfolio_reguest_options_page_html() {
         <form action="options.php" method="post">
             <?php
             settings_fields('am_hotelfolio_reguest_options_group');
-            do_settings_sections('am-hotelfolio-reguest');
+            do_settings_sections('am_reguest');
             submit_button('Änderungen speichern');
             ?>
         </form>
