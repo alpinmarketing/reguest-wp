@@ -182,6 +182,15 @@ class ReguestAPIClient {
         $request['MealType'] = 0;
         $request['GuestUserType'] = 0;
 
+        // 0. Validate presence of required fields as a final safeguard.
+        $requiredFields = ['EmailAddress', 'ArrivalDate', 'DepartureDate'];
+        foreach ($requiredFields as $field) {
+            if (empty($request[$field])) {
+                am_hotelfolio_reguest_log_error("Aborting send. Required API field '{$field}' is missing or empty. Please check your form mapping in the settings.");
+                return false;
+            }
+        }
+
         // 1. Validate Email Address format
         if (isset($request['EmailAddress']) && !filter_var($request['EmailAddress'], FILTER_VALIDATE_EMAIL)) {
             am_hotelfolio_reguest_log_error("Aborting send due to invalid email address format: " . ($request['EmailAddress'] ?? ''));
