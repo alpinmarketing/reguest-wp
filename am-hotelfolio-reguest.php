@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 3.0
+ * Version: 3.1
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
@@ -151,9 +151,9 @@ class ReguestAPIClient {
                 $countryCode = $this->get_country_code_from_name($value);
                 if ($countryCode) { // Only set if a valid code was found
                     $request[$normalizedApiKey] = $countryCode;
+                } else {
+                    am_hotelfolio_reguest_log_error("Country name '{$value}' could not be mapped to an ISO code and was skipped.");
                 }
-                // If no valid country code is found (e.g., for "Other Country"),
-                // the field is simply not added to the request, preventing an API error.
             } elseif (in_array($normalizedApiKey, $dateFields)) {
                 try {
                     $request[$normalizedApiKey] = (new DateTime($value))->format('Y-m-d');
@@ -338,7 +338,9 @@ class ReguestAPIClient {
             'usa' => 'US',
         ];
 
-        $normalizedName = strtolower(trim($name));
+        // Use mb_strtolower for proper handling of multi-byte characters like 'Ö', 'ü', etc.,
+        // regardless of the server's locale settings.
+        $normalizedName = mb_strtolower(trim($name), 'UTF-8');
         return $countryMap[$normalizedName] ?? null;
     }
 }
@@ -355,13 +357,13 @@ function send_to_reguest($contact_form) {
     if (empty($options['active']) || empty($options['uri']) || empty($options['username']) || empty($options['password'])) {
         return;
     }
-    
-    $form_data = [];
-    foreach($_POST as $k=>$v) {
-        if(strpos($k,'_wpcf7') === false) {
-            $form_data[$k] = $v;
-        }
+
+    $submission = WPCF7_Submission::get_instance();
+    if (!$submission) {
+        return;
     }
+    // Use the recommended CF7 method to get sanitized submitted data.
+    $form_data = $submission->get_posted_data();
 
     // Automatically populate meta data supported by the API
     $meta_data = [];
