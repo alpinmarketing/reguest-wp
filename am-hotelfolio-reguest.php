@@ -105,18 +105,13 @@ class ReguestAPIClient {
      * @return bool
      */
     public function send(array $form, array $fields, array $meta_data = [], bool $debug = false): bool {
-        $roomOccupancies = ['Adults', 'Children', 'ChildrenAges'];
+        // --- 1. Data Collection ---
+        // This section gathers all data from the form based on the mapping.
+        $requestData = [];
         $anredeValue = null; // Temporary variable to hold the salutation value for later processing.
+        $roomOccupancies = ['Adults', 'Children', 'ChildrenAges'];
         $dateFields = ['ArrivalDate', 'DepartureDate', 'AlternativeArrivalDate', 'AlternativeDepartureDate', 'BirthDate'];
         $booleanFields = ['NewsletterSubscription'];
-
-        $request = [
-            // Set required fields with default values
-            'MealType'      => 0,
-            'GuestUserType' => 0,
-            'Gender'        => 0,
-            'LanguageCode'  => 'de',
-        ];
 
         // Create a map of lowercase keys to their correct PascalCase version for normalization.
         // This makes the mapping in the admin settings case-insensitive.
@@ -125,7 +120,7 @@ class ReguestAPIClient {
             $keyMap[strtolower($key)] = $key;
         }
 
-        foreach ($fields as $apiKey => $formFieldName) {
+        foreach ($fields as $apiKey => $formFieldName) { // This is now part of Data Collection
             // Skip if the form field name is empty or the field wasn't submitted in the form
             if (empty($formFieldName) || !isset($form[$formFieldName]) || $form[$formFieldName] === '') {
                 continue;
@@ -148,7 +143,7 @@ class ReguestAPIClient {
                 if (is_string($countryName) && !empty($countryName)) {
                     $countryCode = $this->get_country_code_from_name($countryName);
                     if ($countryCode) { // Only set if a valid code was found
-                        $request[$normalizedApiKey] = $countryCode;
+                        $requestData[$normalizedApiKey] = $countryCode;
                     } else {
                         am_hotelfolio_reguest_log_error("Country name '{$countryName}' could not be mapped to an ISO code and was skipped.");
                     }
@@ -158,62 +153,73 @@ class ReguestAPIClient {
                 }
             } elseif (in_array($normalizedApiKey, $dateFields)) {
                 try {
-                    $request[$normalizedApiKey] = (new DateTime($value))->format('Y-m-d');
+                    $requestData[$normalizedApiKey] = (new DateTime($value))->format('Y-m-d');
                 } catch (Exception $e) {
                     // Handle invalid date format gracefully
                     am_hotelfolio_reguest_log_error("Invalid date format for {$normalizedApiKey}: " . $value);
-                    $request[$normalizedApiKey] = null;
+                    $requestData[$normalizedApiKey] = null;
                 }
             } elseif ($normalizedApiKey === 'ChildrenAges') {
                 // Clean the string and convert to an array of integers
                 $agesArray = array_filter(preg_split('/[,\s\.]+/', $value), 'is_numeric');
-                $request['RoomOccupancies'][0][$normalizedApiKey] = array_map('intval', $agesArray);
+                $requestData['RoomOccupancies'][0][$normalizedApiKey] = array_map('intval', $agesArray);
             } elseif (in_array($normalizedApiKey, $booleanFields)) {
                 // Convert common string representations of 'true' to a boolean
-                $request[$normalizedApiKey] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                $requestData[$normalizedApiKey] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
             } elseif (in_array($normalizedApiKey, $roomOccupancies)) { // Handles 'Adults' and 'Children'
-                $request['RoomOccupancies'][0][$normalizedApiKey] = (int)$value;
+                $requestData['RoomOccupancies'][0][$normalizedApiKey] = (int)$value;
             } else {
                 // For fields that might submit an array (like checkboxes), convert them to a string.
                 if (is_array($value)) {
-                    $request[$normalizedApiKey] = implode(', ', $value);
+                    $requestData[$normalizedApiKey] = implode(', ', $value);
                 } else {
-                    $request[$normalizedApiKey] = $value;
+                    $requestData[$normalizedApiKey] = $value;
                 }
             }
         }
 
-        // --- Apply logic based on special fields like 'Anrede' ---
+        // --- 2. Logic Application ---
         // This is done after the main loop to ensure all data is present and to avoid ordering issues.
         if ($anredeValue) {
             // Handle cases where CF7 might wrap a single select value in an array.
             $salutation = is_array($anredeValue) ? ($anredeValue[0] ?? null) : $anredeValue;
 
             if (is_string($salutation) && !empty($salutation)) {
-                // Normalize the salutation to be case-insensitive.
                 switch (strtolower(trim($salutation))) {
                     case 'herr': case 'mr':
-                        $request['Gender'] = 1;
-                        $request['GuestUserType'] = 0; // Explicitly set as a Person
+                        $requestData['Gender'] = 1;
+                        $requestData['GuestUserType'] = 0; // Explicitly set as a Person
                         break;
                     case 'frau': case 'mrs': case 'ms':
-                        $request['Gender'] = 2;
-                        $request['GuestUserType'] = 0; // Explicitly set as a Person
+                        $requestData['Gender'] = 2;
+                        $requestData['GuestUserType'] = 0; // Explicitly set as a Person
                         break;
                     case 'firma': case 'company':
-                        // This sets the guest type, which is then used in the business rules below.
-                        $request['GuestUserType'] = 1;
-                        $request['Gender'] = 0; // A company has no gender
+                        $requestData['GuestUserType'] = 1;
+                        $requestData['Gender'] = 0; // A company has no gender
                         break;
                 }
             }
         }
 
-        // --- Pre-flight Validation based on API requirements ---
+        // --- 3. Final Payload Assembly ---
+        // This ensures a clear priority: Form Data > Metadata > Defaults.
+        $defaults = [
+            'MealType'      => 0,
+            'GuestUserType' => 0,
+            'Gender'        => 0,
+            'LanguageCode'  => 'de',
+        ];
+
+        $request = array_merge($defaults, $meta_data, $requestData);
+
+
+        // --- 4. Pre-flight Validation & Business Rules ---
+        // These are applied to the final, assembled request payload.
 
         // 1. Validate Email Address format
         if (isset($request['EmailAddress']) && !filter_var($request['EmailAddress'], FILTER_VALIDATE_EMAIL)) {
-            am_hotelfolio_reguest_log_error("Aborting send due to invalid email address format: " . $request['EmailAddress']);
+            am_hotelfolio_reguest_log_error("Aborting send due to invalid email address format: " . ($request['EmailAddress'] ?? ''));
             return false; // Stop processing if email is invalid
         }
 
@@ -244,8 +250,7 @@ class ReguestAPIClient {
         }
 
         // Apply business rules based on GuestUserType after gathering all data.
-        // The default is 0 (person) if not set otherwise.
-        $guestType = $request['GuestUserType'] ?? 0;
+        $guestType = $request['GuestUserType']; // Now it's guaranteed to be set from defaults.
 
         switch ($guestType) {
             case 1: // Company
@@ -267,9 +272,6 @@ class ReguestAPIClient {
                 break;
         }
 
-
-        // Merge automatically populated metadata. Values from $request (form mapping) will overwrite metadata.
-        $request = array_merge($meta_data, $request);
 
         // If debug mode is active, log the request payload and skip the actual API call.
         if ($debug) {
