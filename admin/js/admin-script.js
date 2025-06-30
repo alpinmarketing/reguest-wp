@@ -4,11 +4,13 @@ jQuery(document).ready(function($) { // Use $ alias for jQuery
     $('#webx_reguest_add_mapping').on('click', function() {
         var fieldName = $('#webx_reguest_prototypes').val();
         if (fieldName && $wrapper.find('#webx-reguest-row-' + fieldName).length === 0) {
-            var newRow = '<div class="webx-reguest-mapping-row" id="webx-reguest-row-' + fieldName + '">' + // Use webx-reguest-row- for ID
-                            '<label for="webx_reguest_form_' + fieldName + '">' + fieldName + '</label>' + // Label for the field
-                            '<input type="text" name="webx_reguest_form[' + fieldName + ']" value="" placeholder="' + webxReguestAdmin.cf7FieldNamePlaceholder + '" id="webx_reguest_form_' + fieldName + '" class="regular-text" />' + // Input field
-                            '<button type="button" class="button button-secondary webx-reguest-remove-mapping" data-field-name="' + fieldName + '">' + webxReguestAdmin.removeButtonText + '</button>' + // Remove button
-                         '</div>';
+            var newRow = `
+                <div class="webx-reguest-mapping-row" id="webx-reguest-row-${fieldName}">
+                    <label for="webx_reguest_form_${fieldName}">${fieldName}</label>
+                    <input type="text" name="webx_reguest_form[${fieldName}]" value="" placeholder="${webxReguestAdmin.cf7FieldNamePlaceholder}" id="webx_reguest_form_${fieldName}" class="regular-text" />
+                    <button type="button" class="button button-secondary webx-reguest-remove-mapping" data-field-name="${fieldName}">${webxReguestAdmin.removeButtonText}</button>
+                </div>
+            `;
             $wrapper.append(newRow);
             $('#webx_reguest_prototypes').val(''); // Reset select
         }

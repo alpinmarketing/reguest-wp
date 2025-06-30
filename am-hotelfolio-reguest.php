@@ -62,7 +62,6 @@ class ReguestAPIClient {
             // CURLOPT_SSL_VERIFYHOST => 2, // Verify the common name exists and matches the hostname
         ];
         $this->client = curl_init();
-        curl_setopt_array($this->client, $this->options); // Set initial options
     }
 
     /**
@@ -120,7 +119,7 @@ class ReguestAPIClient {
             switch(strtolower($form['anrede'])) { // Use strtolower for case-insensitivity
                 case 'herr': case 'mr': $request['Gender'] = 1; break;
                 case 'frau': case 'mrs': $request['Gender'] = 2; break;
-                case 'firma': case 'company': $request['GuestUserType'] = 2; break;
+                case 'firma': case 'company': $request['GuestUserType'] = 1; break;
                 default: break;
             }
         }
@@ -159,9 +158,10 @@ class ReguestAPIClient {
             }
         }  
 
-        // Set the POST fields for the current request
-        curl_setopt($this->client, CURLOPT_POSTFIELDS, json_encode($request));
-        
+        // Add post fields to options and set all options at once
+        $this->options[CURLOPT_POSTFIELDS] = json_encode($request);
+        curl_setopt_array($this->client, $this->options);
+
 	    $response = curl_exec($this->client);
         
         if ($response === false) {
@@ -202,13 +202,13 @@ class ReguestAPIClient {
  * @return void
  */
 function send_to_reguest($contact_form) { // Type hint WPCF7_ContactForm if available
-    // Collect form data, excluding WPCF7 internal fields
-    $form = [];
-    foreach($_POST as $k=>$v) {
-        if(strpos($k,'_wpcf7') === false) {
-            $form[$k]=$v;
-        }
+    $submission = WPCF7_Submission::get_instance();
+    if ( ! $submission ) {
+        return;
     }
+ 
+    // Use the submission object to get sanitized, posted data.
+    $form = $submission->get_posted_data();
 
     // Check if the 'reguest' field is present and not explicitly 'false'
     if( $form['reguest'] && strtolower($form['reguest']) != 'false' ) {
