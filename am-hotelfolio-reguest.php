@@ -104,7 +104,7 @@ class ReguestAPIClient {
      * 
      * @return bool
      */
-    public function send(array $form, array $fields, array $meta_data = []): bool {
+    public function send(array $form, array $fields, array $meta_data = [], bool $debug = false): bool {
         $roomOccupancies = ['Adults', 'Children', 'ChildrenAges'];
         $dateFields = ['ArrivalDate', 'DepartureDate', 'AlternativeArrivalDate', 'AlternativeDepartureDate', 'BirthDate'];
         $booleanFields = ['NewsletterSubscription'];
@@ -251,6 +251,14 @@ class ReguestAPIClient {
             }
         }
 
+        // If debug mode is active, log the request payload and skip the actual API call.
+        if ($debug) {
+            // Use JSON_PRETTY_PRINT for better readability in the log.
+            $json_payload = json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            am_hotelfolio_reguest_log_error("DEBUG MODUS: API-Aufruf übersprungen. Folgende Daten wären gesendet worden:\n" . $json_payload);
+            return true; // Simulate a successful submission for debugging purposes.
+        }
+
         $this->options[CURLOPT_POSTFIELDS] = json_encode($request);
         curl_setopt_array($this->client,$this->options);
         $response_body = curl_exec($this->client);
@@ -376,8 +384,9 @@ function send_to_reguest($contact_form) {
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
         $form_data['form_title'] = strtoupper($contact_form->title());
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);
+        $is_debug_mode = !empty($options['debug']);
         // Call the API but do not return its result to prevent blocking the CF7 submission.
-        $apiClient->send($form_data, $options['form_mapping'] ?? [], $meta_data);
+        $apiClient->send($form_data, $options['form_mapping'] ?? [], $meta_data, $is_debug_mode);
     }
 }
 add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
