@@ -9,12 +9,13 @@
 .am-hotelfolio-reguest-settings-form #am_hotelfolio_reguest_form_mapping .mapping-row {
     display: flex;
     align-items: center;
+    gap: 10px; /* Adds a consistent space between the label and the input field */
     margin-bottom: 10px;
 }
 
 .am-hotelfolio-reguest-settings-form #am_hotelfolio_reguest_form_mapping .mapping-row label {
     font-family: monospace;
     width: 150px;
-    margin-right: 10px;
+    flex-shrink: 0; /* Prevents the label from shrinking if space is limited */
     font-weight: bold;
 }

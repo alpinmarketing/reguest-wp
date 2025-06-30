@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 2.5
+ * Version: 2.6
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
@@ -269,7 +269,8 @@ function am_hotelfolio_reguest_sanitize_options($input) {
     if (isset($input['form_mapping']) && is_array($input['form_mapping'])) {
         $sanitized_input['form_mapping'] = [];
         foreach ($input['form_mapping'] as $key => $value) {
-            $sanitized_input['form_mapping'][sanitize_key($key)] = sanitize_text_field($value);
+            // Sanitize key as text to preserve case (e.g., 'ArrivalDate'). sanitize_key() would incorrectly lowercase it.
+            $sanitized_input['form_mapping'][sanitize_text_field($key)] = sanitize_text_field($value);
         }
     }
 
