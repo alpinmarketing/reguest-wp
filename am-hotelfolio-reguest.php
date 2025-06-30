@@ -31,12 +31,12 @@ class ReguestAPIClient {
      * @return void
      */
     public function __construct(string $url, string $username, string $password) {
+        if (empty($url) || empty($username) || empty($password)) {
+            throw new InvalidArgumentException('URL, username, and password are required.');
+        }
 
-        assert(!empty($url));
-        assert(!empty($username));
-        assert(!empty($password));
-
-        $this->baseUrl = $url .'/v1/ReGuest/Requests';
+        // Ensure the base URL doesn't have a trailing slash before appending the path
+        $this->baseUrl = rtrim($url, '/') . '/v1/ReGuest/Requests';
 
         $this->options = [
             CURLOPT_URL => $this->baseUrl,
@@ -53,17 +53,28 @@ class ReguestAPIClient {
         $this->client = curl_init();
     }
 
+    public function __destruct() {
+        if (is_resource($this->client)) {
+            curl_close($this->client);
+        }
+    }
+
     /**
      * send
      * 
-     * @param array $form
+     * @param array $form The submitted form data.
+     * @param array $fields The mapping of API keys to form field names.
+     * @param array $meta_data Additional data to include in the request.
      * 
      * @return bool
      */
-    public function send(array $form, array $fields): bool {
+    public function send(array $form, array $fields, array $meta_data = []): bool {
         $roomOccupancies = ['Adults', 'Children', 'ChildrenAges'];
+        $dateFields = ['ArrivalDate', 'DepartureDate', 'AlternativeArrivalDate', 'AlternativeDepartureDate', 'BirthDate'];
+        $booleanFields = ['NewsletterSubscription'];
 
         $request = [
+            // Set required fields with default values
             'MealType'      => 0,
             'GuestUserType' => 0,
             'Gender'        => 0,
@@ -85,28 +96,97 @@ class ReguestAPIClient {
                     case 'Frau': case 'Mrs':
                         $request['Gender'] = 2;
                         break;
-                    case 'Firma': case 'Company':
-                        // Corrected based on old code's logic and API expectation (2 = family/company)
-                        $request['GuestUserType'] = 2;
+                    case 'Firma': case 'Company': // Corrected mapping: 1 = company
+                        $request['GuestUserType'] = 1;
                         break;
                 }
-            } elseif (in_array($apiKey, ['ArrivalDate', 'DepartureDate'])) {
+            } elseif (in_array($apiKey, $dateFields)) {
                 try {
                     $request[$apiKey] = (new DateTime($value))->format('Y-m-d');
                 } catch (Exception $e) {
                     // Handle invalid date format gracefully
+                    error_log("ReGuest Plugin: Invalid date format for {$apiKey}: " . $value);
                     $request[$apiKey] = null;
                 }
             } elseif ($apiKey === 'ChildrenAges') {
                 // Clean the string and convert to an array of integers
                 $agesArray = array_filter(preg_split('/[,\s\.]+/', $value), 'is_numeric');
                 $request['RoomOccupancies'][0][$apiKey] = array_map('intval', $agesArray);
+            } elseif (in_array($apiKey, $booleanFields)) {
+                // Convert common string representations of 'true' to a boolean
+                $request[$apiKey] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
             } elseif (in_array($apiKey, $roomOccupancies)) { // Handles 'Adults' and 'Children'
                 $request['RoomOccupancies'][0][$apiKey] = (int)$value;
             } else {
                 $request[$apiKey] = $value;
             }
         }
+
+        // --- Pre-flight Validation based on API requirements ---
+
+        // 1. Validate Email Address format
+        if (isset($request['EmailAddress']) && !filter_var($request['EmailAddress'], FILTER_VALIDATE_EMAIL)) {
+            error_log("ReGuest Plugin: Aborting send due to invalid email address format: " . $request['EmailAddress']);
+            return false; // Stop processing if email is invalid
+        }
+
+        // 2. Validate Date Plausibility
+        try {
+            if (isset($request['ArrivalDate'], $request['DepartureDate']) && new DateTime($request['ArrivalDate']) >= new DateTime($request['DepartureDate'])) {
+                error_log("ReGuest Plugin: Aborting send. DepartureDate must be after ArrivalDate.");
+                return false;
+            }
+            if (isset($request['AlternativeArrivalDate'], $request['AlternativeDepartureDate']) && new DateTime($request['AlternativeArrivalDate']) >= new DateTime($request['AlternativeDepartureDate'])) {
+                error_log("ReGuest Plugin: Aborting send. AlternativeDepartureDate must be after AlternativeArrivalDate.");
+                return false;
+            }
+        } catch (Exception $e) {
+            // This case is already handled during date parsing, but serves as a safeguard.
+            error_log("ReGuest Plugin: Aborting send due to invalid date for comparison. " . $e->getMessage());
+            return false;
+        }
+
+        // 3. Validate Room Occupancy consistency
+        if (isset($request['RoomOccupancies'][0])) {
+            $numChildren = $request['RoomOccupancies'][0]['Children'] ?? 0;
+            $numAges = isset($request['RoomOccupancies'][0]['ChildrenAges']) ? count($request['RoomOccupancies'][0]['ChildrenAges']) : 0;
+            if ($numChildren > 0 && $numChildren !== $numAges) {
+                error_log("ReGuest Plugin: Aborting send. Mismatch between number of children ({$numChildren}) and provided ages ({$numAges}).");
+                return false;
+            }
+        }
+
+        // Apply business rules based on GuestUserType after gathering all data.
+        // The default is 0 (person) if not set otherwise.
+        $guestType = $request['GuestUserType'] ?? 0;
+
+        switch ($guestType) {
+            case 1: // Company
+                $request['Gender'] = 0;
+                // Per API docs, for a company, only use CompanyName.
+                unset($request['FirstName'], $request['LastName'], $request['FamilyName'], $request['BirthDate'], $request['Title'], $request['FullName']);
+                break;
+
+            case 2: // Family
+                $request['Gender'] = 0;
+                // Per API docs, for a family, use FamilyName or FirstName/LastName. Not CompanyName or a specific BirthDate.
+                unset($request['CompanyName'], $request['BirthDate']);
+                break;
+
+            case 0: // Person
+            default:
+                // Per API docs, for a person, use FirstName/LastName or FullName. Not Company/Family name.
+                unset($request['CompanyName'], $request['FamilyName']);
+                // If FullName is provided, it takes precedence over FirstName/LastName.
+                if (!isset($request['FirstName']) && !isset($request['LastName']) && !empty($request['FullName'])) {
+                    // Re:Guest will split the name automatically.
+                }
+                break;
+        }
+
+
+        // Merge automatically populated metadata
+        $request = array_merge($request, $meta_data);
 
         // Set LanguageCode as a fallback if not mapped
         if (!isset($request['LanguageCode'])) {
@@ -119,13 +199,39 @@ class ReguestAPIClient {
 
         $this->options[CURLOPT_POSTFIELDS] = json_encode($request);
         curl_setopt_array($this->client,$this->options);
-	    $return = json_decode(curl_exec($this->client),1);
+        $response_body = curl_exec($this->client);
 
-        if($return['Success']) {
-	        return true;
-        } else {
-	        return false;
+        // Check for cURL errors
+        if (curl_errno($this->client)) {
+            error_log('ReGuest Plugin cURL Error: ' . curl_error($this->client));
+            return false;
         }
+
+        // Check for non-successful HTTP status codes
+        $http_code = curl_getinfo($this->client, CURLINFO_HTTP_CODE);
+        if ($http_code < 200 || $http_code >= 300) {
+            // Try to decode the error response for a more specific message
+            $error_details = json_decode($response_body, true);
+            if (json_last_error() === JSON_ERROR_NONE && isset($error_details['ExceptionMessage'])) {
+                $error_message = "API Error: " . $error_details['ExceptionMessage'];
+            } else {
+                $error_message = "Raw Response: " . $response_body;
+            }
+            error_log("ReGuest Plugin HTTP Error: Status code {$http_code}. " . $error_message);
+            return false;
+        }
+
+        $return = json_decode($response_body, true);
+
+        // Check for JSON decoding errors
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('ReGuest Plugin JSON Decode Error: ' . json_last_error_msg());
+            return false;
+        }
+
+        // Check for the 'Success' flag in the API response
+        $is_success = isset($return['Success']) && $return['Success'] === true;
+        return $is_success;
     }
 }
 
@@ -149,10 +255,22 @@ function send_to_reguest($contact_form) {
         }
     }
 
+    // Automatically populate meta data supported by the API
+    $meta_data = [];
+    if (!empty($_SERVER['REMOTE_ADDR'])) {
+        $meta_data['ClientIpAddress'] = sanitize_text_field($_SERVER['REMOTE_ADDR']);
+    }
+    if (!empty($_SERVER['HTTP_USER_AGENT'])) {
+        $meta_data['UserAgent'] = sanitize_text_field($_SERVER['HTTP_USER_AGENT']);
+    }
+    if (!empty($_SERVER['HTTP_REFERER'])) {
+        $meta_data['OriginUrl'] = esc_url_raw($_SERVER['HTTP_REFERER']);
+    }
+
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
         $form_data['form_title'] = strtoupper($contact_form->title);
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);
-        return $apiClient->send($form_data, $options['form_mapping'] ?? []);
+        return $apiClient->send($form_data, $options['form_mapping'] ?? [], $meta_data);
     }
 }
 add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
@@ -294,25 +412,42 @@ function am_hotelfolio_reguest_field_text_cb($args) {
 function am_hotelfolio_reguest_field_mapping_cb() {
     $options = get_option('am_hotelfolio_reguest_options');
     $mappings = $options['form_mapping'] ?? [];
+    // Expanded list of API fields based on the documentation
     $api_fields = [
-        'ArrivalDate' => 'Ankunft',
-        'DepartureDate' => 'Abreise',
-        'Anrede' => 'Anrede',
-        'EmailAddress' => 'E-Mail',
-        'Adults' => 'Erwachsene',
-        'Children' => 'Kinder',
-        'ChildrenAges' => 'Kinderalter',
-        'FirstName' => 'Vorname',
-        'LastName' => 'Nachname',
-        'CompanyName' => 'Firma',
-        'CountryCode' => 'Ländercode',
-        'StreetName' => 'Straße',
-        'PostalCode' => 'Postleitzahl',
-        'CityName' => 'Stadt',
-        'PhoneNumber' => 'Telefonnummer',
-        'MobileNumber' => 'Mobilnummer',
-        'Text' => 'Text',
-        'LanguageCode' => 'Sprache',
+        'EmailAddress'             => 'E-Mail (Required)',
+        'ArrivalDate'              => 'Ankunft (Required)',
+        'DepartureDate'            => 'Abreise (Required)',
+        'MealType'                 => 'Verpflegung (Required, 0-6)',
+        'GuestUserType'            => 'Gast-Typ (0: Person, 1: Firma, 2: Familie)',
+        'Gender'                   => 'Geschlecht (0: unb, 1: m, 2: w, 3: d)',
+        'Anrede'                   => 'Anrede (setzt Gender/GuestUserType)',
+        'Title'                    => 'Titel',
+        'FirstName'                => 'Vorname',
+        'LastName'                 => 'Nachname',
+        'FullName'                 => 'Vollständiger Name (ersetzt Vor-/Nachname)',
+        'FamilyName'               => 'Familienname',
+        'CompanyName'              => 'Firma',
+        'BirthDate'                => 'Geburtsdatum',
+        'StreetName'               => 'Straße',
+        'PostalCode'               => 'Postleitzahl',
+        'CityName'                 => 'Stadt',
+        'CountryCode'              => 'Ländercode (ISO 3166-1 alpha-2)',
+        'PhoneNumber'              => 'Telefonnummer',
+        'MobileNumber'             => 'Mobilnummer',
+        'FaxNumber'                => 'Faxnummer',
+        'Text'                     => 'Nachricht / Text',
+        'LanguageCode'             => 'Sprache (ISO 639-1)',
+        'NewsletterSubscription'   => 'Newsletter-Anmeldung (true/false)',
+        'AlternativeArrivalDate'   => 'Alternative Ankunft',
+        'AlternativeDepartureDate' => 'Alternative Abreise',
+        'OfferName'                => 'Angebotsname',
+        'OfferCode'                => 'Angebots-Code',
+        'ThirdPartyNotes'          => 'Notizen Dritter',
+        'ForeignId'                => 'Externe Referenz-ID',
+        'SourceOfBusiness'         => 'Herkunft (z.B. Website)',
+        'Adults'                   => 'Erwachsene (für Zimmer)',
+        'Children'                 => 'Kinder-Anzahl (für Zimmer)',
+        'ChildrenAges'             => 'Alter der Kinder (kommagetrennt, für Zimmer)',
     ];
 
     echo '<div id="am_hotelfolio_reguest_form_mapping">';
