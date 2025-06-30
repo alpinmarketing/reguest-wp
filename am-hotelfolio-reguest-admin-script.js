@@ -5,8 +5,8 @@
         $('.prototype-button').on('click', function (e) {
             e.preventDefault();
 
-            var wrapper = $('#webx_reguest_form_mapping');
-            var name = $('#webx_reguest_prototypes').val();
+            var wrapper = $('#am_hotelfolio_reguest_form_mapping');
+            var name = $('#am_hotelfolio_reguest_prototypes').val();
             if (!name) {
                 return;
             }
@@ -19,9 +19,9 @@
                     // Using a template literal for cleaner HTML string
                     var newRow = `
                         <div class="mapping-row">
-                            <label for="webx_reguest_options_form_${name}">${name}</label>
+                            <label for="am_hotelfolio_reguest_options_form_mapping_${name}">${name}</label>
                             <input type="text"
-                                   name="webx_reguest_options[form][${name}]"
+                                   name="am_hotelfolio_reguest_options[form_mapping][${name}]"
                                    value=""
                                    placeholder="Contact Form 7 field name"
                                    data-key="${name}" />
