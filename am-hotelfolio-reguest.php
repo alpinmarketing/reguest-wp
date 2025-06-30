@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 2.7
+ * Version: 2.8
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
@@ -61,58 +61,24 @@ class ReguestAPIClient {
      * @return bool
      */
     public function send(array $form, array $fields): bool {
-        $roomOccupancies = ['Adults','Children','ChildrenAges'];
-        
-        $form['kinderalter'] = explode(',',trim(preg_replace('/\D+/',',',$form['kinderalter']),','));
-        // $form['kinderalter'] = preg_split('/([,\. ])/',$form['kinderalter']);
-        if(!ctype_digit($form['kinderalter'][0])) $form['kinderalter']=[];
+        $roomOccupancies = ['Adults', 'Children', 'ChildrenAges'];
+
         $request = [
-            'MealType' => 0,            // Currently not avail. 
-                                        // values if implemented
-                                        // 0: n/a
-                                        // 1: bed & breakfast
-                                        // 2: half board
-                                        // 3: 3/4 board
-                                        // 4: full board
-                                        // 5: overnight stay only
-                                        // 6: all inclusive
-            'GuestUserType' => 0,       // Currently not avail.
-                                        // values if implemented
-                                        // 0: person
-                                        // 1: company
-                                        // 2: family
-            'Gender' => 0,              // Currently not avail. 
-                                        // values if implemented
-                                        // 0: unknown
-                                        // 1: male
-                                        // 2: female
+            'MealType'      => 0,
+            'GuestUserType' => 0,
+            'Gender'        => 0,
         ];
 
-        switch($form['anrede']) {
-            case 'Herr': case 'Mr':
-                $request['Gender'] = 1;
-                break;
-            case 'Frau': case 'Mrs':
-                $request['Gender'] = 2;
-                break;
-            case 'Firma': case 'Company':
-                $request['GuestUserType'] = 0;
-                break;
-            default: break;
-        }
+        foreach ($fields as $apiKey => $formFieldName) {
+            // Skip if the form field name is empty or the field wasn't submitted in the form
+            if (empty($formFieldName) || !isset($form[$formFieldName]) || $form[$formFieldName] === '') {
+                continue;
+            }
 
+            $value = $form[$formFieldName];
 
-        foreach($fields as $k=>$v) {
-            if(in_array($k,$roomOccupancies)) {
-                if($k == 'ChildrenAges' && is_array($v) && !empty($v)) {
-                    $request['RoomOccupancies'][0][$k]=$form[$v];
-                } else {
-                    $request['RoomOccupancies'][0][$k]=$form[$v];
-                }
-            } else if(in_array($k,['ArrivalDate','DepartureDate'])) {
-                $request[$k] = (new DateTime($form[$v]))->format('Y-m-d');
-            } else if ($k == 'Anrede') {
-                switch($form[$v]) {
+            if ($apiKey === 'Anrede') {
+                switch ($value) {
                     case 'Herr': case 'Mr':
                         $request['Gender'] = 1;
                         break;
@@ -120,22 +86,36 @@ class ReguestAPIClient {
                         $request['Gender'] = 2;
                         break;
                     case 'Firma': case 'Company':
-                        $request['GuestUserType'] = 0;
+                        // Corrected based on old code's logic and API expectation (2 = family/company)
+                        $request['GuestUserType'] = 2;
                         break;
-                    default: break;
                 }
+            } elseif (in_array($apiKey, ['ArrivalDate', 'DepartureDate'])) {
+                try {
+                    $request[$apiKey] = (new DateTime($value))->format('Y-m-d');
+                } catch (Exception $e) {
+                    // Handle invalid date format gracefully
+                    $request[$apiKey] = null;
+                }
+            } elseif ($apiKey === 'ChildrenAges') {
+                // Clean the string and convert to an array of integers
+                $agesArray = array_filter(preg_split('/[,\s\.]+/', $value), 'is_numeric');
+                $request['RoomOccupancies'][0][$apiKey] = array_map('intval', $agesArray);
+            } elseif (in_array($apiKey, $roomOccupancies)) { // Handles 'Adults' and 'Children'
+                $request['RoomOccupancies'][0][$apiKey] = (int)$value;
             } else {
-                $request[$k]=$form[$v];
+                $request[$apiKey] = $value;
             }
         }
 
-        if(!isset($request['LanguageCode'])) {
-            if(strpos($form['form_title'],'EN') !== false) {
+        // Set LanguageCode as a fallback if not mapped
+        if (!isset($request['LanguageCode'])) {
+            if (isset($form['form_title']) && strpos($form['form_title'], 'EN') !== false) {
                 $request['LanguageCode'] = 'en';
             } else {
                 $request['LanguageCode'] = 'de';
             }
-        }  
+        }
 
         $this->options[CURLOPT_POSTFIELDS] = json_encode($request);
         curl_setopt_array($this->client,$this->options);
@@ -217,35 +197,44 @@ add_action('admin_init', 'am_hotelfolio_reguest_settings_init');
  * This ensures that settings from versions before the Settings API are not lost.
  */
 function am_hotelfolio_reguest_run_migration() {
-    // Use a unique name for the migration flag to avoid conflicts.
     $migration_flag = 'am_hotelfolio_reguest_migrated_to_v2_5';
-    // Exit if migration has already been done.
+
+    // 1. Exit immediately if the migration has already been completed.
     if (get_option($migration_flag)) {
         return;
     }
 
-    // Check for the existence of old, separate options.
+    // 2. Check for the existence of at least one old option to trigger the migration.
     if (get_option('webx_reguest_username') !== false) {
-        $new_options = get_option('am_hotelfolio_reguest_options', []);
+        // Get any existing new options to merge with, ensuring no data is lost.
+        $options = get_option('am_hotelfolio_reguest_options', []);
 
-        // Migrate old settings to the new single option array.
-        $new_options['active']       = get_option('webx_reguest_active');
-        $new_options['username']     = get_option('webx_reguest_username');
-        $new_options['password']     = get_option('webx_reguest_password');
-        $new_options['uri']          = get_option('webx_reguest_uri');
-        $new_options['form_mapping'] = get_option('webx_reguest_form', []);
+        // 3. Collect all old data with safe defaults.
+        $migrated_data = [
+            'active'       => get_option('webx_reguest_active', null),
+            'username'     => get_option('webx_reguest_username', ''),
+            'password'     => get_option('webx_reguest_password', ''),
+            'uri'          => get_option('webx_reguest_uri', ''),
+            'form_mapping' => get_option('webx_reguest_form', []),
+        ];
 
-        // Save the new, consolidated options.
-        update_option('am_hotelfolio_reguest_options', $new_options);
+        // 4. Merge old data into the new options array. Migrated data takes precedence.
+        $final_options = array_merge($options, $migrated_data);
+        update_option('am_hotelfolio_reguest_options', $final_options);
 
-        // Clean up by deleting the old, separate options.
-        delete_option('webx_reguest_active');
-        delete_option('webx_reguest_username');
-        delete_option('webx_reguest_password');
-        delete_option('webx_reguest_uri');
-        delete_option('webx_reguest_form');
+        // 5. Clean up by deleting all old, separate options.
+        $old_options_to_delete = [
+            'webx_reguest_active',
+            'webx_reguest_username',
+            'webx_reguest_password',
+            'webx_reguest_uri',
+            'webx_reguest_form'
+        ];
+        foreach ($old_options_to_delete as $old_option) {
+            delete_option($old_option);
+        }
 
-        // Set the flag to ensure this migration runs only once.
+        // 6. Set the flag to ensure this migration never runs again.
         update_option($migration_flag, true);
     }
 }
