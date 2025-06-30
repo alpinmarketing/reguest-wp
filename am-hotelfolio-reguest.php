@@ -189,13 +189,11 @@ class ReguestAPIClient {
                     case 'herr':
                     case 'mr':
                         $requestData['Gender'] = 1;
-                        $requestData['GuestUserType'] = 0; // Explicitly set as a Person
                         break;
                     case 'frau':
                     case 'mrs':
                     case 'ms':
                         $requestData['Gender'] = 2;
-                        $requestData['GuestUserType'] = 0; // Explicitly set as a Person
                         break;
                 }
             }
@@ -204,8 +202,6 @@ class ReguestAPIClient {
         // --- 3. Final Payload Assembly ---
         // This ensures a clear priority: Form Data > Metadata > Defaults.
         $defaults = [
-            'MealType'      => 0,
-            'GuestUserType' => 0,
             'Gender'        => 0,
             'LanguageCode'  => 'de',
         ];
@@ -215,6 +211,10 @@ class ReguestAPIClient {
 
         // --- 4. Pre-flight Validation & Business Rules ---
         // These are applied to the final, assembled request payload.
+
+        // Apply the requested fixed values. This overrides any value from the form or defaults.
+        $request['MealType'] = 0;
+        $request['GuestUserType'] = 0;
 
         // 1. Validate Email Address format
         if (isset($request['EmailAddress']) && !filter_var($request['EmailAddress'], FILTER_VALIDATE_EMAIL)) {
@@ -248,28 +248,9 @@ class ReguestAPIClient {
             }
         }
 
-        // Apply business rules based on GuestUserType after gathering all data.
-        $guestType = $request['GuestUserType']; // Now it's guaranteed to be set from defaults.
-
-        switch ($guestType) {
-            case 1: // Company
-                $request['Gender'] = 0;
-                // Per API docs, for a company, only use CompanyName.
-                unset($request['FirstName'], $request['LastName'], $request['FamilyName'], $request['BirthDate'], $request['Title'], $request['FullName']);
-                break;
-
-            case 2: // Family
-                $request['Gender'] = 0;
-                // Per API docs, for a family, use FamilyName or FirstName/LastName. Not CompanyName or a specific BirthDate.
-                unset($request['CompanyName'], $request['BirthDate']);
-                break;
-
-            case 0: // Person
-            default:
-                // Per API docs, for a person, use FirstName/LastName or FullName. Not Company/Family name.
-                unset($request['CompanyName'], $request['FamilyName']);
-                break;
-        }
+        // Since GuestUserType is always 0 (Person), we apply the corresponding business rule.
+        // Per API docs, for a person, use FirstName/LastName or FullName. Not Company/Family name.
+        unset($request['CompanyName'], $request['FamilyName']);
 
 
         // If debug mode is active, log the request payload and skip the actual API call.
