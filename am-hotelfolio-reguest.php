@@ -194,13 +194,16 @@ class ReguestAPIClient {
                 switch (strtolower(trim($salutation))) {
                     case 'herr': case 'mr':
                         $request['Gender'] = 1;
+                        $request['GuestUserType'] = 0; // Explicitly set as a Person
                         break;
                     case 'frau': case 'mrs': case 'ms':
                         $request['Gender'] = 2;
+                        $request['GuestUserType'] = 0; // Explicitly set as a Person
                         break;
                     case 'firma': case 'company':
                         // This sets the guest type, which is then used in the business rules below.
                         $request['GuestUserType'] = 1;
+                        $request['Gender'] = 0; // A company has no gender
                         break;
                 }
             }
