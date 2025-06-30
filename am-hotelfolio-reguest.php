@@ -140,7 +140,7 @@ class ReguestAPIClient {
                     case 'Herr': case 'Mr':
                         $request['Gender'] = 1;
                         break;
-                    case 'Frau': case 'Mrs':
+                    case 'Frau': case 'Mrs': case 'Ms':
                         $request['Gender'] = 2;
                         break;
                     case 'Firma': case 'Company': // Corrected mapping: 1 = company
@@ -180,7 +180,12 @@ class ReguestAPIClient {
             } elseif (in_array($normalizedApiKey, $roomOccupancies)) { // Handles 'Adults' and 'Children'
                 $request['RoomOccupancies'][0][$normalizedApiKey] = (int)$value;
             } else {
-                $request[$normalizedApiKey] = $value;
+                // For fields that might submit an array (like checkboxes), convert them to a string.
+                if (is_array($value)) {
+                    $request[$normalizedApiKey] = implode(', ', $value);
+                } else {
+                    $request[$normalizedApiKey] = $value;
+                }
             }
         }
 
