@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 3.2
+ * Version: 3.3
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
@@ -186,17 +186,16 @@ class ReguestAPIClient {
 
             if (is_string($salutation) && !empty($salutation)) {
                 switch (strtolower(trim($salutation))) {
-                    case 'herr': case 'mr':
+                    case 'herr':
+                    case 'mr':
                         $requestData['Gender'] = 1;
                         $requestData['GuestUserType'] = 0; // Explicitly set as a Person
                         break;
-                    case 'frau': case 'mrs': case 'ms':
+                    case 'frau':
+                    case 'mrs':
+                    case 'ms':
                         $requestData['Gender'] = 2;
                         $requestData['GuestUserType'] = 0; // Explicitly set as a Person
-                        break;
-                    case 'firma': case 'company':
-                        $requestData['GuestUserType'] = 1;
-                        $requestData['Gender'] = 0; // A company has no gender
                         break;
                 }
             }
