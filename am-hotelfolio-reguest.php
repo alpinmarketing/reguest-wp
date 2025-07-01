@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 5.0
+ * Version: 6.0
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
