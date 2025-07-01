@@ -127,8 +127,9 @@ class ReguestAPIClient {
                 }
             } elseif ($normalizedApiKey === 'ChildrenAges') {
                 // Clean the string and convert to an array of integers
-                $agesArray = array_filter(preg_split('/[,\s\.]+/', $value), 'is_numeric');
-                $requestData['RoomOccupancies'][0][$normalizedApiKey] = array_map('intval', $agesArray);
+                $agesArray = array_filter(preg_split('/[,\s\.]+/', $value), 'is_numeric'); 
+                // Re-index the array with array_values to ensure it becomes a JSON array, not an object, even if keys are non-sequential after filtering.
+                $requestData['RoomOccupancies'][0][$normalizedApiKey] = array_map('intval', array_values($agesArray));
             } elseif (in_array($normalizedApiKey, $booleanFields)) {
                 // Convert common string representations of 'true' to a boolean
                 $requestData[$normalizedApiKey] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
@@ -213,6 +214,15 @@ class ReguestAPIClient {
             // This case is already handled during date parsing, but serves as a safeguard.
             am_hotelfolio_reguest_log_error("Aborting send due to invalid date for comparison. " . $e->getMessage());
             return false;
+        }
+
+        // Reconcile Children count: The number of provided ages is the source of truth.
+        // This prevents mismatches if a user enters '1' for the number of children but provides two ages.
+        if (isset($request['RoomOccupancies'][0]['ChildrenAges'])) {
+            $numAges = count($request['RoomOccupancies'][0]['ChildrenAges']);
+            if ($numAges > 0) {
+                $request['RoomOccupancies'][0]['Children'] = $numAges;
+            }
         }
 
         // 3. Validate Room Occupancy consistency
