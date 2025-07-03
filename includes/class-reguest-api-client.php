@@ -174,9 +174,11 @@ class ReguestAPIClient {
 
         $request = array_merge($defaults, $meta_data, $requestData);
 
-        // Normalize LanguageCode to a 2-letter ISO 639-1 code.
-        // This is done after merging to ensure it's applied regardless of the source
-        // (metadata or form mapping) and to correctly format values like 'en_GB'.
+        // Final normalization of the LanguageCode to a 2-letter ISO 639-1 code.
+        // This is intentionally done *after* all data sources are merged. This ensures that
+        // the language code is correctly formatted (e.g., 'en_GB' -> 'en') regardless of
+        // whether it came from automatic detection (in $meta_data) or a manual form mapping
+        // (in $requestData).
         if (isset($request['LanguageCode']) && is_string($request['LanguageCode'])) {
             $request['LanguageCode'] = strtolower(substr(trim($request['LanguageCode']), 0, 2));
         }
