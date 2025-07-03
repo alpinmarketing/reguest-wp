@@ -50,9 +50,19 @@ function send_to_reguest($contact_form) {
     // Automatically detect the form's language from the CF7 locale property.
     // This is more reliable than relying on field mapping for this special value.
     $meta_data = [];
+    $locale = null;
+
+    // Primary method: Use the object property, which is the cleanest way.
     if (isset($contact_form->locale)) {
-        // The value will be normalized to a 2-letter code in the API client.
-        $meta_data['LanguageCode'] = $contact_form->locale;
+        $locale = $contact_form->locale;
+    }
+    // Fallback method as suggested: Directly access the POST data. This is a robust safeguard.
+    elseif (isset($_POST['_wpcf7_locale'])) {
+        $locale = sanitize_text_field(wp_unslash($_POST['_wpcf7_locale']));
+    }
+
+    if ($locale) {
+        $meta_data['LanguageCode'] = $locale;
     }
 
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
