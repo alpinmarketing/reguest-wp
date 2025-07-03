@@ -47,15 +47,13 @@ function send_to_reguest($contact_form) {
     // Use the recommended CF7 method to get sanitized submitted data.
     $form_data = $submission->get_posted_data();
 
-    // Special CF7 mail tags like [_wpcf7_locale] are not included in get_posted_data().
-    // We manually add the locale to the form data array so it can be used in the field mapping.
-    // This allows the admin to map 'LanguageCode' to '_wpcf7_locale' in the settings.
-    if (isset($contact_form->locale)) {
-        $form_data['_wpcf7_locale'] = $contact_form->locale;
-    }
-
-    // The $meta_data array is kept for potential future use with other automatically detected values.
+    // Automatically detect the form's language from the CF7 locale property.
+    // This is more reliable than relying on field mapping for this special value.
     $meta_data = [];
+    if (isset($contact_form->locale)) {
+        // The value will be normalized to a 2-letter code in the API client.
+        $meta_data['LanguageCode'] = $contact_form->locale;
+    }
 
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);

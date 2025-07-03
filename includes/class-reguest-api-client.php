@@ -116,12 +116,6 @@ class ReguestAPIClient {
                     // Log if the value was unusable (e.g., empty array or not a string)
                     am_hotelfolio_reguest_log_error("Invalid value received for CountryCode; expected a string, but got something else. Value skipped.");
                 }
-            } elseif ($normalizedApiKey === 'LanguageCode') {
-                // The value from _wpcf7_locale is always a string.
-                if (is_string($value) && !empty($value)) {
-                    // Normalize to a 2-letter ISO 639-1 code (e.g., 'en_GB' -> 'en').
-                    $requestData[$normalizedApiKey] = strtolower(substr(trim($value), 0, 2));
-                }
             } elseif (in_array($normalizedApiKey, $dateFields)) {
                 try {
                     $requestData[$normalizedApiKey] = (new DateTime($value))->format('Y-m-d');
@@ -179,6 +173,13 @@ class ReguestAPIClient {
         ];
 
         $request = array_merge($defaults, $meta_data, $requestData);
+
+        // Normalize LanguageCode to a 2-letter ISO 639-1 code.
+        // This is done after merging to ensure it's applied regardless of the source
+        // (metadata or form mapping) and to correctly format values like 'en_GB'.
+        if (isset($request['LanguageCode']) && is_string($request['LanguageCode'])) {
+            $request['LanguageCode'] = strtolower(substr(trim($request['LanguageCode']), 0, 2));
+        }
 
         // Apply the requested fixed values. This overrides any value from the form or defaults.
         $request['MealType'] = 0;
