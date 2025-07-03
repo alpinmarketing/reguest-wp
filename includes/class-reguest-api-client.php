@@ -103,16 +103,18 @@ class ReguestAPIClient {
             if ($normalizedApiKey === 'Anrede') {
                 $anredeValue = $value;
             } elseif ($normalizedApiKey === 'CountryCode') {
-                if (is_string($value) && !empty($value)) {
-                    $countryCode = $this->get_country_code_from_name($value);
+                // Handle cases where CF7 might wrap a single select value in an array.
+                $countryName = is_array($value) ? ($value[0] ?? null) : $value;
+                if (is_string($countryName) && !empty($countryName)) {
+                    $countryCode = $this->get_country_code_from_name($countryName);
                     if ($countryCode) { // Only set if a valid code was found
                         $requestData[$normalizedApiKey] = $countryCode;
                     } else {
-                        am_hotelfolio_reguest_log_error("Country name '{$value}' could not be mapped to an ISO code and was skipped.");
+                        am_hotelfolio_reguest_log_error("Country name '{$countryName}' could not be mapped to an ISO code and was skipped.");
                     }
                 } else {
-                    // Log if the value was not a string (e.g., from a multi-select field)
-                    am_hotelfolio_reguest_log_error("Invalid value received for CountryCode; expected a single string, but got something else. Value skipped.");
+                    // Log if the value was unusable (e.g., empty array or not a string)
+                    am_hotelfolio_reguest_log_error("Invalid value received for CountryCode; expected a string, but got something else. Value skipped.");
                 }
             } elseif ($normalizedApiKey === 'LanguageCode') {
                 // The value from _wpcf7_locale is always a string.
@@ -149,19 +151,24 @@ class ReguestAPIClient {
         }
 
         // This is done after the main loop to ensure all data is present and to avoid ordering issues.
-        if (is_string($anredeValue) && !empty($anredeValue)) {
-            // Handle Polylang for CF7, which can wrap values in {}. We remove them and surrounding spaces before comparison.
-            switch (strtolower(trim($anredeValue, ' {}'))) {
-                    case 'herr':
-                    case 'mr':
-                        $requestData['Gender'] = 1;
-                        break;
-                    case 'frau':
-                    case 'mrs':
-                    case 'ms':
-                        $requestData['Gender'] = 2;
-                        break;
-                }
+        if ($anredeValue) {
+            // Handle cases where CF7 might wrap a single select value in an array.
+            $salutation = is_array($anredeValue) ? ($anredeValue[0] ?? null) : $anredeValue;
+
+            if (is_string($salutation) && !empty($salutation)) {
+                // Handle Polylang for CF7, which can wrap values in {}. We remove them and surrounding spaces before comparison.
+                switch (strtolower(trim($salutation, ' {}'))) {
+                        case 'herr':
+                        case 'mr':
+                            $requestData['Gender'] = 1;
+                            break;
+                        case 'frau':
+                        case 'mrs':
+                        case 'ms':
+                            $requestData['Gender'] = 2;
+                            break;
+                    }
+            }
 
         }
 
