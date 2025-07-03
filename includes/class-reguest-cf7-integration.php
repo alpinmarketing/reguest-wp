@@ -47,14 +47,8 @@ function send_to_reguest($contact_form) {
     // Use the recommended CF7 method to get sanitized submitted data.
     $form_data = $submission->get_posted_data();
 
-    // Automatically populate meta data supported by the API
+    // The $meta_data array is kept for potential future use with other automatically detected values.
     $meta_data = [];
-
-    // Add language code from CF7 locale, e.g., 'de_DE' -> 'de'
-    $locale = $contact_form->locale ?? null;
-    if (!empty($locale)) {
-        $meta_data['LanguageCode'] = substr($locale, 0, 2);
-    }
 
     if( isset($form_data['reguest']) && strtolower($form_data['reguest']) !== 'false' ) {
         $apiClient = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);

@@ -145,7 +145,6 @@ class ReguestAPIClient {
             }
         }
 
-        // --- 2. Logic Application ---
         // This is done after the main loop to ensure all data is present and to avoid ordering issues.
         if ($anredeValue) {
             // Handle cases where CF7 might wrap a single select value in an array.
@@ -168,24 +167,20 @@ class ReguestAPIClient {
 
         }
 
-        // --- 3. Pre-flight Validation & Business Rules ---
-        // These are applied to the final, assembled request payload.
+        // --- 4. Final Payload Assembly ---
+        // This ensures a clear priority: Form Data > Metadata > Defaults.
+        $defaults = [
+            'Gender'        => 0,
+            'LanguageCode'  => 'de_DE'
+        ];
+
+        $request = array_merge($defaults, $meta_data, $requestData);
 
         // Normalize LanguageCode to a 2-letter ISO 639-1 code.
         // This ensures that even if a full locale like 'en_GB' is passed, it's correctly formatted.
         if (isset($request['LanguageCode']) && is_string($request['LanguageCode'])) {
             $request['LanguageCode'] = strtolower(substr(trim($request['LanguageCode']), 0, 2));
         }
-
-        // --- 4. Final Payload Assembly ---
-        // This ensures a clear priority: Form Data > Metadata > Defaults.
-        $defaults = [
-            'Gender'        => 0,
-            'LanguageCode'  => 'de',
-        ];
-
-        $request = array_merge($defaults, $meta_data, $requestData);
-
 
         // Apply the requested fixed values. This overrides any value from the form or defaults.
         $request['MealType'] = 0;
@@ -231,7 +226,7 @@ class ReguestAPIClient {
             }
         }
 
-        // 3. Validate Room Occupancy consistency
+        // 4. Validate Room Occupancy consistency
         if (isset($request['RoomOccupancies'][0])) {
             $numChildren = $request['RoomOccupancies'][0]['Children'] ?? 0;
             $numAges = isset($request['RoomOccupancies'][0]['ChildrenAges']) ? count($request['RoomOccupancies'][0]['ChildrenAges']) : 0;
