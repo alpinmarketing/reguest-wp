@@ -181,6 +181,12 @@ class ReguestAPIClient {
         // --- 4. Pre-flight Validation & Business Rules ---
         // These are applied to the final, assembled request payload.
 
+        // Normalize LanguageCode to a 2-letter ISO 639-1 code.
+        // This ensures that even if a full locale like 'en_GB' is passed, it's correctly formatted.
+        if (isset($request['LanguageCode']) && is_string($request['LanguageCode'])) {
+            $request['LanguageCode'] = strtolower(substr(trim($request['LanguageCode']), 0, 2));
+        }
+
         // Apply the requested fixed values. This overrides any value from the form or defaults.
         $request['MealType'] = 0;
         $request['GuestUserType'] = 0;
