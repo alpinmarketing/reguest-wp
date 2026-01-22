@@ -1,4 +1,6 @@
 <?php
+defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
+
 /**
  * Simple class for Reguest Calls 
  */

@@ -1,4 +1,6 @@
 <?php
+defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
+
 /**
  * Logs messages either to a transient for debugging or to the standard PHP error log.
  *
