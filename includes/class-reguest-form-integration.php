@@ -18,7 +18,7 @@ function am_hotelfolio_reguest_log_error(string $message) {
         }
 
         // Add new log entry to the beginning of the array with a timestamp.
-        array_unshift($logs, date('Y-m-d H:i:s') . ' - ' . $message);
+        array_unshift($logs, wp_date('Y-m-d H:i:s') . ' - ' . $message);
 
         // Keep the log from growing indefinitely (e.g., max 100 entries).
         $logs = array_slice($logs, 0, 100);
@@ -76,3 +76,36 @@ function send_to_reguest($contact_form) {
     }
 }
 add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
+
+/**
+ * HF Forms Integration: fires on hf_form_submitted action.
+ *
+ * @param int   $_form_id     WordPress Post-ID of the hf_form entry (unused, accepted for hook arity).
+ * @param array $payload_data Sanitized form fields (system fields like altcha/form_id already stripped).
+ * @param array $params       Full raw $_POST / WP_REST_Request params including system fields.
+ */
+function send_to_reguest_hf_forms( int $_form_id, array $payload_data, array $params ) {
+    $options = get_option('am_hotelfolio_reguest_options');
+
+    if (empty($options['active']) || empty($options['uri']) || empty($options['username']) || empty($options['password'])) {
+        return;
+    }
+
+    // Master switch: hidden field <input type="hidden" name="reguest" value="true"> must be present.
+    if (($params['reguest'] ?? '') !== 'true') {
+        return;
+    }
+
+    $meta_data = [];
+    $raw_locale = $params['locale'] ?? $payload_data['locale'] ?? '';
+    if (!empty($raw_locale)) {
+        $meta_data['LanguageCode'] = sanitize_text_field(wp_unslash((string) $raw_locale));
+    }
+
+    $apiClient     = new ReguestAPIClient($options['uri'], $options['username'], $options['password']);
+    $is_test_mode  = !empty($options['test_mode']);
+    $is_debug_mode = !empty($options['debug']);
+
+    $apiClient->send($payload_data, $options['form_mapping'] ?? [], $meta_data, $is_test_mode, $is_debug_mode);
+}
+add_action( 'hf_form_submitted', 'send_to_reguest_hf_forms', 10, 3 );

@@ -44,11 +44,14 @@ add_action('admin_init', 'am_hotelfolio_reguest_settings_init');
  * Handle admin actions, like clearing the debug log.
  */
 function am_hotelfolio_reguest_handle_admin_actions() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
     if (isset($_GET['page']) && $_GET['page'] === 'am-hotelfolio-reguest' && isset($_GET['action']) && $_GET['action'] === 'clear_log') {
-        if (isset($_GET['_wpnonce']) && wp_verify_nonce(sanitize_key($_GET['_wpnonce']), 'am_reguest_clear_log_action')) {
+        if (isset($_GET['_wpnonce']) && wp_verify_nonce(wp_unslash($_GET['_wpnonce']), 'am_reguest_clear_log_action')) {
             delete_transient('am_hotelfolio_reguest_debug_log');
             // Redirect to the settings page with a success message.
-            wp_safe_redirect(admin_url('admin.php?page=am-hotelfolio-reguest&log_cleared=1'));
+            wp_safe_redirect(admin_url('options-general.php?page=am-hotelfolio-reguest&log_cleared=1'));
             exit;
         }
     }
@@ -57,7 +60,7 @@ add_action('admin_init', 'am_hotelfolio_reguest_handle_admin_actions');
 
 function am_hotelfolio_reguest_sanitize_options($input) {
     $sanitized_input = [];
-    $options = get_option('am_hotelfolio_reguest_options');
+    $options = get_option('am_hotelfolio_reguest_options', []);
 
     $sanitized_input['active'] = isset($input['active']) ? '1' : null;
     $sanitized_input['debug'] = isset($input['debug']) ? '1' : null;
@@ -84,36 +87,35 @@ function am_hotelfolio_reguest_sanitize_options($input) {
 }
 
 function am_hotelfolio_reguest_field_active_cb() {
-    $options = get_option('am_hotelfolio_reguest_options');
-    $checked = isset($options['active']) ? 'checked' : '';
-    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[active]' value='1' {$checked} />";
+    $options = get_option('am_hotelfolio_reguest_options', []);
+    echo '<input type="checkbox" name="am_hotelfolio_reguest_options[active]" value="1" ' . checked(isset($options['active']), true, false) . ' />';
 }
 
 function am_hotelfolio_reguest_field_debug_cb() {
-    $options = get_option('am_hotelfolio_reguest_options');
-    $checked = isset($options['debug']) ? 'checked' : '';
-    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[debug]' value='1' {$checked} /> <p class='description'>Wenn aktiviert, werden detaillierte Fehler und Nachrichten auf dieser Seite protokolliert. Im Live-Betrieb sollte dies deaktiviert sein, Fehler werden dann im Standard-Server-Log gespeichert.</p>";
+    $options = get_option('am_hotelfolio_reguest_options', []);
+    echo '<input type="checkbox" name="am_hotelfolio_reguest_options[debug]" value="1" ' . checked(isset($options['debug']), true, false) . ' />';
+    echo '<p class="description">Wenn aktiviert, werden detaillierte Fehler und Nachrichten auf dieser Seite protokolliert. Im Live-Betrieb sollte dies deaktiviert sein, Fehler werden dann im Standard-Server-Log gespeichert.</p>';
 }
 
 function am_hotelfolio_reguest_field_test_mode_cb() {
-    $options = get_option('am_hotelfolio_reguest_options');
-    $checked = isset($options['test_mode']) ? 'checked' : '';
-    echo "<input type='checkbox' name='am_hotelfolio_reguest_options[test_mode]' value='1' {$checked} /> <p class='description'>Wenn aktiviert, wird der API-Aufruf nur simuliert und die Daten werden nicht gesendet. Die erstellten Daten werden im Debug-Log angezeigt (wenn der Debug-Modus ebenfalls aktiv ist).</p>";
+    $options = get_option('am_hotelfolio_reguest_options', []);
+    echo '<input type="checkbox" name="am_hotelfolio_reguest_options[test_mode]" value="1" ' . checked(isset($options['test_mode']), true, false) . ' />';
+    echo '<p class="description">Wenn aktiviert, wird der API-Aufruf nur simuliert und die Daten werden nicht gesendet. Die erstellten Daten werden im Debug-Log angezeigt (wenn der Debug-Modus ebenfalls aktiv ist).</p>';
 }
 
 function am_hotelfolio_reguest_field_text_cb($args) {
-    $options = get_option('am_hotelfolio_reguest_options');
-    $id = $args['id'];
+    $options = get_option('am_hotelfolio_reguest_options', []);
+    $id   = $args['id'];
     $type = $args['type'];
     $value = $options[$id] ?? '';
     $placeholder = ($type === 'password') ? 'Zum Ändern neu eingeben' : '';
-    $value_attr = ($type === 'password') ? '' : 'value="' . esc_attr($value) . '"';
+    $value_attr  = ($type === 'password') ? '' : 'value="' . esc_attr($value) . '"';
 
-    echo "<input type='{$type}' name='am_hotelfolio_reguest_options[{$id}]' {$value_attr} placeholder='{$placeholder}' class='regular-text' />";
+    echo '<input type="' . esc_attr($type) . '" name="am_hotelfolio_reguest_options[' . esc_attr($id) . ']" ' . $value_attr . ' placeholder="' . esc_attr($placeholder) . '" class="regular-text" />';
 }
 
 function am_hotelfolio_reguest_field_mapping_cb() {
-    $options = get_option('am_hotelfolio_reguest_options');
+    $options = get_option('am_hotelfolio_reguest_options', []);
     $mappings = $options['form_mapping'] ?? [];
     // Expanded list of API fields based on the documentation
     $api_fields = [
@@ -181,7 +183,7 @@ function am_hotelfolio_reguest_options_page_html() {
     if (!current_user_can('manage_options')) {
         return;
     }
-    $options = get_option('am_hotelfolio_reguest_options');
+    $options = get_option('am_hotelfolio_reguest_options', []);
     ?>
     <div class="wrap am-hotelfolio-reguest-settings-form">
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
@@ -205,7 +207,7 @@ function am_hotelfolio_reguest_options_page_html() {
                 echo '<textarea readonly style="width: 100%; height: 300px; background: #f0f0f0; font-family: monospace; white-space: pre; color: #333;">';
                 echo esc_textarea(implode("\n", $logs));
                 echo '</textarea>';
-                $clear_log_url = wp_nonce_url(admin_url('admin.php?page=am-hotelfolio-reguest&action=clear_log'), 'am_reguest_clear_log_action');
+                $clear_log_url = wp_nonce_url(admin_url('options-general.php?page=am-hotelfolio-reguest&action=clear_log'), 'am_reguest_clear_log_action');
                 echo '<p><a href="' . esc_url($clear_log_url) . '" class="button button-secondary">Log leeren</a></p>';
             } else {
                 echo '<p>Das Log ist leer.</p>';

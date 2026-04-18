@@ -2,16 +2,13 @@
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
 /**
- * Simple class for Reguest Calls 
+ * Simple class for Reguest Calls
  */
 
 class ReguestAPIClient {
-    // Base Url
     private $baseUrl;
-    // Client (current curl)
-    private $client;
-    // Options for client
-    private $options;
+    private $username;
+    private $password;
     // A list of all known API keys in their correct PascalCase format.
     private static $knownApiKeys = [
         'EmailAddress', 'ArrivalDate', 'DepartureDate', 'MealType', 'GuestUserType',
@@ -25,11 +22,11 @@ class ReguestAPIClient {
 
     /**
      * __construct
-     * 
+     *
      * @param string $url
      * @param string $username
      * @param string $password
-     * 
+     *
      * @return void
      */
     public function __construct(string $url, string $username, string $password) {
@@ -38,38 +35,20 @@ class ReguestAPIClient {
         }
 
         // Ensure the base URL doesn't have a trailing slash before appending the path
-        $this->baseUrl = rtrim($url, '/') . '/v1/ReGuest/Requests';
-
-        $this->options = [
-            CURLOPT_URL => $this->baseUrl,
-			CURLOPT_RETURNTRANSFER => 1,
-			CURLOPT_POST => 1,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'User-Agent: ReguestWordpressApiClient/1.0',
-                'Username: '.$username,
-                'Password: '.$password,
-                'ServiceAction: Add'
-            ]
-        ];
-        $this->client = curl_init();
-    }
-
-    public function __destruct() {
-        if (is_resource($this->client)) {
-            curl_close($this->client);
-        }
+        $this->baseUrl  = rtrim($url, '/') . '/v1/ReGuest/Requests';
+        $this->username = $username;
+        $this->password = $password;
     }
 
     /**
      * send
-     * 
+     *
      * @param array $form The submitted form data.
      * @param array $fields The mapping of API keys to form field names.
      * @param array $meta_data Additional data to include in the request.
      * @param bool $test_mode If true, the request is logged but not sent.
      * @param bool $debug_mode If true, detailed request/response info is logged.
-     * 
+     *
      * @return bool
      */
     public function send(array $form, array $fields, array $meta_data = [], bool $test_mode = false, bool $debug_mode = false): bool {
@@ -127,8 +106,9 @@ class ReguestAPIClient {
                     $requestData[$normalizedApiKey] = null;
                 }
             } elseif ($normalizedApiKey === 'ChildrenAges') {
-                // Clean the string and convert to an array of integers
-                $agesArray = array_filter(preg_split('/[,\s\.]+/', $value), 'is_numeric'); 
+                // Normalise: checkbox groups may submit an array, join it first.
+                $agesString = is_array($value) ? implode(',', $value) : $value;
+                $agesArray = array_filter(preg_split('/[,\s\.]+/', $agesString), 'is_numeric');
                 // Re-index the array with array_values to ensure it becomes a JSON array, not an object, even if keys are non-sequential after filtering.
                 $requestData['RoomOccupancies'][0][$normalizedApiKey] = array_map('intval', array_values($agesArray));
             } elseif (in_array($normalizedApiKey, $booleanFields)) {
@@ -243,10 +223,14 @@ class ReguestAPIClient {
         // Per API docs, for a person, use FirstName/LastName or FullName. Not Company/Family name.
         unset($request['CompanyName'], $request['FamilyName']);
 
+        // --- 5. Encode & Log ---
 
-        // --- 5. Send & Log ---
+        $json = json_encode($request);
+        if ($json === false) {
+            am_hotelfolio_reguest_log_error('json_encode failed: ' . json_last_error_msg());
+            return false;
+        }
 
-        // If debug mode is active, log the request payload that will be sent or simulated.
         if ($debug_mode) {
             $json_payload_for_log = json_encode($request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             am_hotelfolio_reguest_log_error("API Request Payload:\n" . $json_payload_for_log);
@@ -258,19 +242,26 @@ class ReguestAPIClient {
             return true; // Simulate a successful submission for testing purposes.
         }
 
-        // --- 6. Execute API Call ---
-        $this->options[CURLOPT_POSTFIELDS] = json_encode($request);
-        curl_setopt_array($this->client,$this->options);
-        $response_body = curl_exec($this->client);
+        // --- 6. Execute API Call via WP HTTP API ---
+        $response = wp_remote_post($this->baseUrl, [
+            'timeout' => 15,
+            'headers' => [
+                'Content-Type'  => 'application/json',
+                'User-Agent'    => 'ReguestWordpressApiClient/1.0',
+                'Username'      => $this->username,
+                'Password'      => $this->password,
+                'ServiceAction' => 'Add',
+            ],
+            'body' => $json,
+        ]);
 
-        // Check for cURL errors
-        if (curl_errno($this->client)) {
-            am_hotelfolio_reguest_log_error('cURL Error: ' . curl_error($this->client));
+        if (is_wp_error($response)) {
+            am_hotelfolio_reguest_log_error('HTTP Error: ' . $response->get_error_message());
             return false;
         }
 
-        // Check for non-successful HTTP status codes
-        $http_code = curl_getinfo($this->client, CURLINFO_HTTP_CODE);
+        $http_code     = wp_remote_retrieve_response_code($response);
+        $response_body = wp_remote_retrieve_body($response);
 
         // If debug mode is active, log the raw response from the API, regardless of status code.
         if ($debug_mode) {

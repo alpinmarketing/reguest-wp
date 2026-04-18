@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends Contact Form 7 Fields to Reguest
- * Version: 26.1.22
+ * Version: 26.4.18
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 // Load plugin classes
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-reguest-api-client.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-reguest-admin-settings.php';
-require_once plugin_dir_path( __FILE__ ) . 'includes/class-reguest-cf7-integration.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-reguest-form-integration.php';
 
 /**
  * Run a one-time migration of old settings to the new options array.
