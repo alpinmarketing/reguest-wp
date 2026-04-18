@@ -87,11 +87,17 @@ class ReguestAPIClient {
                 // Handle cases where CF7 might wrap a single select value in an array.
                 $countryName = is_array($value) ? ($value[0] ?? null) : $value;
                 if (is_string($countryName) && !empty($countryName)) {
-                    $countryCode = $this->get_country_code_from_name($countryName);
-                    if ($countryCode) { // Only set if a valid code was found
-                        $requestData[$normalizedApiKey] = $countryCode;
+                    // If the value is already a 2-letter ISO code (e.g. from a native HTML select),
+                    // use it directly; otherwise try to resolve from a country name string.
+                    if (preg_match('/^[A-Za-z]{2}$/', $countryName)) {
+                        $requestData[$normalizedApiKey] = strtoupper($countryName);
                     } else {
-                        am_hotelfolio_reguest_log_error("Country name '{$countryName}' could not be mapped to an ISO code and was skipped.");
+                        $countryCode = $this->get_country_code_from_name($countryName);
+                        if ($countryCode) {
+                            $requestData[$normalizedApiKey] = $countryCode;
+                        } else {
+                            am_hotelfolio_reguest_log_error("Country name '{$countryName}' could not be mapped to an ISO code and was skipped.");
+                        }
                     }
                 } else {
                     // Log if the value was unusable (e.g., empty array or not a string)

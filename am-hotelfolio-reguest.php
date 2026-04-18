@@ -3,7 +3,7 @@
  * Plugin Name: AM Hotelfolio Reguest
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends form submissions (CF7 and HF Forms) to the Reguest API
- * Version: 26.4.18
+ * Version: 26.4.18.1
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
