@@ -99,8 +99,8 @@ function send_to_reguest_hf_forms( int $_form_id, array $payload_data, array $pa
     $meta_data = [];
     $raw_locale = $params['locale'] ?? $payload_data['locale'] ?? '';
     if (empty($raw_locale)) {
-        // Auto-detect from Polylang if available, otherwise fall back to WP locale.
-        $raw_locale = function_exists('pll_current_language') ? pll_current_language() : get_locale();
+        // pll_current_language() can return false in REST/AJAX context, so always fall back to get_locale().
+        $raw_locale = (function_exists('pll_current_language') ? pll_current_language() : '') ?: get_locale();
     }
     if (!empty($raw_locale)) {
         $meta_data['LanguageCode'] = sanitize_text_field(wp_unslash((string) $raw_locale));
