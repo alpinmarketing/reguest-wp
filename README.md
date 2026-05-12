@@ -14,8 +14,8 @@ WordPress plugin that forwards form submissions to the [Re:Guest](https://www.re
 
 ## Requirements
 
-- WordPress 5.8+
-- PHP 7.4+
+- WordPress 6.9+
+- PHP 8.3+
 - [Contact Form 7](https://wordpress.org/plugins/contact-form-7/) or [HF Forms](https://wordpress.org/plugins/hf-form/) (or both)
 - A valid Re:Guest API account (URL, username, password)
 

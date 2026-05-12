@@ -4,6 +4,8 @@
  * Plugin URI: https://www.web-crossing.com
  * Description: Sends form submissions (CF7 and HF Forms) to the Reguest API
  * Version: 26.4.20.2
+ * Requires at least: 6.9
+ * Requires PHP: 8.3
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
