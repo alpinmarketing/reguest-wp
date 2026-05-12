@@ -109,6 +109,14 @@ Dates are accepted in any format PHP's `DateTime` can parse and are normalised t
 
 Creates `dist/reguest-wp.zip`, ready for upload to WordPress.
 
+## Disclaimer
+
+This plugin is provided as is, without warranty of any kind, express or implied. The author accepts no liability for any damages, data loss, security issues, or other consequences arising from the use or inability to use this plugin. Use at your own risk.
+
+The plugin communicates with the external [reguest.io](https://www.reguest.io/) API. The author is not responsible for the availability, accuracy, or content of that service.
+
 ## License
 
-Proprietary — © Ing. Christian Fohrmann / [ALPINMARKETING®](https://www.alpinmarketing.at)
+This plugin is released under the GNU General Public License v2.0 or later.
+
+Copyright (C) 2026 [ALPINMARKETING®](https://www.alpinmarketing.at)
