@@ -69,17 +69,17 @@ class ReguestAPIClient {
                         if ( $countryCode ) {
                             $requestData[ $normalizedApiKey ] = $countryCode;
                         } else {
-                            am_hotelfolio_reguest_log_error( "Country name '{$countryName}' could not be mapped to an ISO code and was skipped." );
+                            reguest_wp_log_error( "Country name '{$countryName}' could not be mapped to an ISO code and was skipped." );
                         }
                     }
                 } else {
-                    am_hotelfolio_reguest_log_error( 'Invalid value received for CountryCode; expected a string. Value skipped.' );
+                    reguest_wp_log_error( 'Invalid value received for CountryCode; expected a string. Value skipped.' );
                 }
             } elseif ( in_array( $normalizedApiKey, $dateFields, true ) ) {
                 try {
                     $requestData[ $normalizedApiKey ] = ( new DateTime( (string) $value ) )->format( 'Y-m-d' );
                 } catch ( Exception $e ) {
-                    am_hotelfolio_reguest_log_error( "Invalid date format for {$normalizedApiKey}: " . $value );
+                    reguest_wp_log_error( "Invalid date format for {$normalizedApiKey}: " . $value );
                     $requestData[ $normalizedApiKey ] = null;
                 }
             } elseif ( $normalizedApiKey === 'ChildrenAges' ) {
@@ -130,29 +130,29 @@ class ReguestAPIClient {
         $requiredFields = [ 'EmailAddress', 'ArrivalDate', 'DepartureDate' ];
         foreach ( $requiredFields as $field ) {
             if ( empty( $request[ $field ] ) ) {
-                am_hotelfolio_reguest_log_error( "Aborting send. Required API field '{$field}' is missing or empty. Please check your form mapping in the settings." );
+                reguest_wp_log_error( "Aborting send. Required API field '{$field}' is missing or empty. Please check your form mapping in the settings." );
                 return false;
             }
         }
 
         if ( ! filter_var( $request['EmailAddress'], FILTER_VALIDATE_EMAIL ) ) {
-            am_hotelfolio_reguest_log_error( 'Aborting send due to invalid email address format: ' . $request['EmailAddress'] );
+            reguest_wp_log_error( 'Aborting send due to invalid email address format: ' . $request['EmailAddress'] );
             return false;
         }
 
         try {
             if ( isset( $request['ArrivalDate'], $request['DepartureDate'] )
                 && new DateTime( $request['ArrivalDate'] ) >= new DateTime( $request['DepartureDate'] ) ) {
-                am_hotelfolio_reguest_log_error( 'Aborting send. DepartureDate must be after ArrivalDate.' );
+                reguest_wp_log_error( 'Aborting send. DepartureDate must be after ArrivalDate.' );
                 return false;
             }
             if ( isset( $request['AlternativeArrivalDate'], $request['AlternativeDepartureDate'] )
                 && new DateTime( $request['AlternativeArrivalDate'] ) >= new DateTime( $request['AlternativeDepartureDate'] ) ) {
-                am_hotelfolio_reguest_log_error( 'Aborting send. AlternativeDepartureDate must be after AlternativeArrivalDate.' );
+                reguest_wp_log_error( 'Aborting send. AlternativeDepartureDate must be after AlternativeArrivalDate.' );
                 return false;
             }
         } catch ( Exception $e ) {
-            am_hotelfolio_reguest_log_error( 'Aborting send due to invalid date for comparison. ' . $e->getMessage() );
+            reguest_wp_log_error( 'Aborting send due to invalid date for comparison. ' . $e->getMessage() );
             return false;
         }
 
@@ -170,7 +170,7 @@ class ReguestAPIClient {
                 ? count( $request['RoomOccupancies'][0]['ChildrenAges'] )
                 : 0;
             if ( $numChildren > 0 && $numChildren !== $numAges ) {
-                am_hotelfolio_reguest_log_error( "Aborting send. Mismatch between number of children ({$numChildren}) and provided ages ({$numAges})." );
+                reguest_wp_log_error( "Aborting send. Mismatch between number of children ({$numChildren}) and provided ages ({$numAges})." );
                 return false;
             }
         }
@@ -180,16 +180,16 @@ class ReguestAPIClient {
 
         $json = json_encode( $request );
         if ( $json === false ) {
-            am_hotelfolio_reguest_log_error( 'json_encode failed: ' . json_last_error_msg() );
+            reguest_wp_log_error( 'json_encode failed: ' . json_last_error_msg() );
             return false;
         }
 
         if ( $debug_mode ) {
-            am_hotelfolio_reguest_log_error( "API Request Payload:\n" . json_encode( $request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
+            reguest_wp_log_error( "API Request Payload:\n" . json_encode( $request, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
         }
 
         if ( $test_mode ) {
-            am_hotelfolio_reguest_log_error( 'TESTMODUS: API-Aufruf übersprungen.' );
+            reguest_wp_log_error( 'TESTMODUS: API-Aufruf übersprungen.' );
             return true;
         }
 
@@ -206,7 +206,7 @@ class ReguestAPIClient {
         ] );
 
         if ( is_wp_error( $response ) ) {
-            am_hotelfolio_reguest_log_error( 'HTTP Error: ' . $response->get_error_message() );
+            reguest_wp_log_error( 'HTTP Error: ' . $response->get_error_message() );
             return false;
         }
 
@@ -214,7 +214,7 @@ class ReguestAPIClient {
         $response_body = wp_remote_retrieve_body( $response );
 
         if ( $debug_mode ) {
-            am_hotelfolio_reguest_log_error( "API Response (HTTP {$http_code}):\n" . $response_body );
+            reguest_wp_log_error( "API Response (HTTP {$http_code}):\n" . $response_body );
         }
 
         if ( $http_code < 200 || $http_code >= 300 ) {
@@ -223,7 +223,7 @@ class ReguestAPIClient {
                 $error_message = ( json_last_error() === JSON_ERROR_NONE && isset( $error_details['ExceptionMessage'] ) )
                     ? 'API Error: ' . $error_details['ExceptionMessage']
                     : 'Raw Response: ' . $response_body;
-                am_hotelfolio_reguest_log_error( "HTTP Error: Status code {$http_code}. " . $error_message );
+                reguest_wp_log_error( "HTTP Error: Status code {$http_code}. " . $error_message );
             }
             return false;
         }
@@ -231,14 +231,14 @@ class ReguestAPIClient {
         $return = json_decode( $response_body, true );
 
         if ( json_last_error() !== JSON_ERROR_NONE ) {
-            am_hotelfolio_reguest_log_error( 'JSON Decode Error: ' . json_last_error_msg() );
+            reguest_wp_log_error( 'JSON Decode Error: ' . json_last_error_msg() );
             return false;
         }
 
         $is_success = isset( $return['Success'] ) && $return['Success'] === true;
 
         if ( $debug_mode ) {
-            am_hotelfolio_reguest_log_error( 'API Call Result: ' . ( $is_success ? 'Success' : 'Failure' ) );
+            reguest_wp_log_error( 'API Call Result: ' . ( $is_success ? 'Success' : 'Failure' ) );
         }
 
         return $is_success;

@@ -2,11 +2,11 @@
 declare(strict_types=1);
 defined( 'ABSPATH' ) or die( 'No script kiddies please!' );
 
-function am_hotelfolio_reguest_log_error( string $message ): void {
-    $options = (array) get_option( 'am_hotelfolio_reguest_options' );
+function reguest_wp_log_error( string $message ): void {
+    $options = (array) get_option( 'reguest_wp_options' );
 
     if ( ! empty( $options['debug'] ) ) {
-        $log_transient_key = 'am_hotelfolio_reguest_debug_log';
+        $log_transient_key = 'reguest_wp_debug_log';
         $logs = get_transient( $log_transient_key );
         if ( false === $logs || ! is_array( $logs ) ) {
             $logs = [];
@@ -21,8 +21,8 @@ function am_hotelfolio_reguest_log_error( string $message ): void {
     }
 }
 
-function send_to_reguest( $contact_form ): void {
-    $options = (array) get_option( 'am_hotelfolio_reguest_options' );
+function reguest_wp_send( $contact_form ): void {
+    $options = (array) get_option( 'reguest_wp_options' );
 
     if ( empty( $options['active'] ) || empty( $options['uri'] ) || empty( $options['username'] ) || empty( $options['password'] ) ) {
         return;
@@ -58,10 +58,10 @@ function send_to_reguest( $contact_form ): void {
         $apiClient->send( $form_data, $options['form_mapping'] ?? [], $meta_data, ! empty( $options['test_mode'] ), ! empty( $options['debug'] ) );
     }
 }
-add_action( 'wpcf7_before_send_mail', 'send_to_reguest', 10, 1 );
+add_action( 'wpcf7_before_send_mail', 'reguest_wp_send', 10, 1 );
 
-function send_to_reguest_hf_forms( int $_form_id, array $payload_data, array $params ): void {
-    $options = (array) get_option( 'am_hotelfolio_reguest_options' );
+function reguest_wp_send_hf_forms( int $_form_id, array $payload_data, array $params ): void {
+    $options = (array) get_option( 'reguest_wp_options' );
 
     if ( empty( $options['active'] ) || empty( $options['uri'] ) || empty( $options['username'] ) || empty( $options['password'] ) ) {
         return;
@@ -85,4 +85,4 @@ function send_to_reguest_hf_forms( int $_form_id, array $payload_data, array $pa
     $apiClient = new ReguestAPIClient( $options['uri'], $options['username'], $options['password'] );
     $apiClient->send( $payload_data, $options['form_mapping'] ?? [], $meta_data, ! empty( $options['test_mode'] ), ! empty( $options['debug'] ) );
 }
-add_action( 'hf_form_submitted', 'send_to_reguest_hf_forms', 10, 3 );
+add_action( 'hf_form_submitted', 'reguest_wp_send_hf_forms', 10, 3 );

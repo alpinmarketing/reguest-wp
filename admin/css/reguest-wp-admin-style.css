@@ -1,0 +1,25 @@
+.reguest-wp-settings-form .form-table th {
+    width: 150px;
+}
+
+.reguest-wp-settings-form .form-table td p.description {
+    max-width: 400px;
+}
+
+.reguest-wp-settings-form #reguest_wp_form_mapping .mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Adds a consistent space between the label and the input field */
+    margin-bottom: 10px;
+}
+
+.reguest-wp-settings-form #reguest_wp_form_mapping .mapping-row label {
+    font-family: monospace;
+    width: 150px;
+    flex-shrink: 0; /* Prevents the label from shrinking if space is limited */
+    font-weight: bold;
+}
+
+.reguest-wp-settings-form #reguest_wp_form_mapping .mapping-row input[type="text"] {
+    flex-grow: 1;
+}

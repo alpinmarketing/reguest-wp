@@ -1,4 +1,4 @@
-# AM Hotelfolio Reguest
+# Reguest WP
 
 WordPress plugin that forwards form submissions to the [Re:Guest](https://www.reguest.io/) hotel inquiry API. Supports **Contact Form 7** and **Hotelfolio**, with optional Polylang integration for multilingual sites.
 
@@ -107,7 +107,7 @@ Dates are accepted in any format PHP's `DateTime` can parse and are normalised t
 ./build-zip.sh
 ```
 
-Creates `dist/am-hotelfolio-reguest.zip`, ready for upload to WordPress.
+Creates `dist/reguest-wp.zip`, ready for upload to WordPress.
 
 ## License
 
