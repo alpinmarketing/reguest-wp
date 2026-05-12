@@ -21,68 +21,58 @@ function reguest_wp_log_error( string $message ): void {
     }
 }
 
-function reguest_wp_send( $contact_form ): void {
-    $options = (array) get_option( 'reguest_wp_options' );
-
-    if ( empty( $options['active'] ) || empty( $options['uri'] ) || empty( $options['username'] ) || empty( $options['password'] ) ) {
-        return;
-    }
-
-    if ( ! class_exists( 'WPCF7_Submission' ) ) {
-        return;
-    }
-
-    $submission = WPCF7_Submission::get_instance();
-    if ( ! $submission ) {
-        return;
-    }
-
-    $form_data = $submission->get_posted_data();
-    $meta_data = [];
-
-    // Auto-detect language from the CF7 form locale — more reliable than requiring a mapped field.
-    $locale = null;
-    if ( $contact_form instanceof WPCF7_ContactForm && isset( $contact_form->locale ) ) {
-        $locale = $contact_form->locale;
-    } elseif ( isset( $_POST['_wpcf7_locale'] ) ) {
-        $locale = sanitize_text_field( wp_unslash( $_POST['_wpcf7_locale'] ) );
-    }
-
-    if ( $locale ) {
-        $meta_data['LanguageCode'] = $locale;
-    }
-
-    if ( isset( $form_data['reguest'] ) && strtolower( (string) $form_data['reguest'] ) !== 'false' ) {
-        $apiClient = new ReguestAPIClient( $options['uri'], $options['username'], $options['password'] );
-        // Result intentionally ignored to avoid blocking the CF7 submission flow on API errors.
-        $apiClient->send( $form_data, $options['form_mapping'] ?? [], $meta_data, ! empty( $options['test_mode'] ), ! empty( $options['debug'] ) );
-    }
+function reguest_wp_register_routes(): void {
+    register_rest_route( 'reguest-wp/v1', '/submit', [
+        'methods'             => 'POST',
+        'callback'            => 'reguest_wp_handle_webhook',
+        'permission_callback' => '__return_true',
+    ] );
 }
-add_action( 'wpcf7_before_send_mail', 'reguest_wp_send', 10, 1 );
+add_action( 'rest_api_init', 'reguest_wp_register_routes' );
 
-function reguest_wp_send_hf_forms( int $_form_id, array $payload_data, array $params ): void {
+function reguest_wp_handle_webhook( WP_REST_Request $request ): WP_REST_Response {
     $options = (array) get_option( 'reguest_wp_options' );
 
     if ( empty( $options['active'] ) || empty( $options['uri'] ) || empty( $options['username'] ) || empty( $options['password'] ) ) {
-        return;
+        return new WP_REST_Response( [ 'success' => false, 'error' => 'Plugin not configured.' ], 503 );
     }
 
-    // Hidden field <input type="hidden" name="reguest" value="true"> must be present to trigger the API call.
-    if ( ( $params['reguest'] ?? '' ) !== 'true' ) {
-        return;
+    $stored_token = (string) ( $options['webhook_token'] ?? '' );
+    $sent_token   = (string) ( $request->get_header( 'x_hf_token' ) ?? '' );
+
+    if ( $stored_token === '' || ! hash_equals( $stored_token, $sent_token ) ) {
+        return new WP_REST_Response( [ 'success' => false, 'error' => 'Unauthorized.' ], 401 );
+    }
+
+    $body = $request->get_json_params();
+    if ( ! is_array( $body ) || empty( $body ) ) {
+        return new WP_REST_Response( [ 'success' => false, 'error' => 'Empty or invalid JSON body.' ], 400 );
     }
 
     $meta_data  = [];
-    $raw_locale = (string) ( $params['locale'] ?? $payload_data['locale'] ?? '' );
-    if ( $raw_locale === '' ) {
-        // pll_current_language() returns false in REST/AJAX context; fall back to get_locale().
-        $raw_locale = ( function_exists( 'pll_current_language' ) ? pll_current_language() : '' ) ?: get_locale();
-    }
+    $raw_locale = (string) ( $body['_wp_locale'] ?? '' );
     if ( $raw_locale !== '' ) {
-        $meta_data['LanguageCode'] = sanitize_text_field( wp_unslash( $raw_locale ) );
+        $meta_data['LanguageCode'] = strtolower( substr( trim( $raw_locale ), 0, 2 ) );
+    }
+    unset( $body['_wp_locale'] );
+
+    try {
+        $apiClient = new ReguestAPIClient( $options['uri'], $options['username'], $options['password'] );
+        $success   = $apiClient->send(
+            $body,
+            $options['form_mapping'] ?? [],
+            $meta_data,
+            ! empty( $options['test_mode'] ),
+            ! empty( $options['debug'] )
+        );
+    } catch ( InvalidArgumentException $e ) {
+        reguest_wp_log_error( 'Configuration error: ' . $e->getMessage() );
+        return new WP_REST_Response( [ 'success' => false, 'error' => 'Server configuration error.' ], 503 );
     }
 
-    $apiClient = new ReguestAPIClient( $options['uri'], $options['username'], $options['password'] );
-    $apiClient->send( $payload_data, $options['form_mapping'] ?? [], $meta_data, ! empty( $options['test_mode'] ), ! empty( $options['debug'] ) );
+    if ( $success ) {
+        return new WP_REST_Response( [ 'success' => true ], 200 );
+    }
+
+    return new WP_REST_Response( [ 'success' => false, 'error' => 'API call failed. Check debug log.' ], 500 );
 }
-add_action( 'hf_form_submitted', 'reguest_wp_send_hf_forms', 10, 3 );

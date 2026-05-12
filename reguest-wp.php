@@ -3,7 +3,7 @@ declare(strict_types=1);
 /**
  * Plugin Name: Reguest WP
  * Plugin URI: https://github.com/alpinmarketing/reguest-wp
- * Description: Sends form submissions (CF7 and HF Forms) to the Reguest API
+ * Description: Sends form submissions to the ReGuest API via a generic webhook endpoint.
  * Version: 26.4.20.2
  * Requires at least: 6.9
  * Requires PHP: 8.3

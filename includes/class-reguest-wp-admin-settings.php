@@ -20,6 +20,13 @@ function reguest_wp_enqueue_admin_assets( string $hook ): void {
 add_action( 'admin_enqueue_scripts', 'reguest_wp_enqueue_admin_assets' );
 
 function reguest_wp_settings_init(): void {
+    // Auto-generate webhook token on first load if absent.
+    $options = (array) get_option( 'reguest_wp_options', [] );
+    if ( empty( $options['webhook_token'] ) ) {
+        $options['webhook_token'] = bin2hex( random_bytes( 32 ) );
+        update_option( 'reguest_wp_options', $options );
+    }
+
     register_setting(
         'reguest_wp_options_group',
         'reguest_wp_options',
@@ -41,6 +48,10 @@ function reguest_wp_settings_init(): void {
 
     add_settings_section( 'reguest_wp_form_section', 'Form Field Mapping', null, 'reguest_wp' );
     add_settings_field( 'reguest_wp_form_mapping', 'API Field => Form Field', 'reguest_wp_field_mapping_cb', 'reguest_wp', 'reguest_wp_form_section' );
+
+    add_settings_section( 'reguest_wp_webhook_section', 'Webhook Endpoint', null, 'reguest_wp' );
+    add_settings_field( 'reguest_wp_webhook_url',   'Webhook URL',   'reguest_wp_field_webhook_url_cb',   'reguest_wp', 'reguest_wp_webhook_section' );
+    add_settings_field( 'reguest_wp_webhook_token', 'Webhook Token', 'reguest_wp_field_webhook_token_cb', 'reguest_wp', 'reguest_wp_webhook_section' );
 }
 add_action( 'admin_init', 'reguest_wp_settings_init' );
 
@@ -85,6 +96,13 @@ function reguest_wp_sanitize_options( mixed $input ): array {
             // sanitize_text_field preserves case (e.g. 'ArrivalDate'); sanitize_key() would lowercase it.
             $sanitized_input['form_mapping'][ sanitize_text_field( (string) $key ) ] = sanitize_text_field( (string) $value );
         }
+    }
+
+    // Preserve or regenerate the webhook token.
+    if ( ! empty( $input['regenerate_token'] ) ) {
+        $sanitized_input['webhook_token'] = bin2hex( random_bytes( 32 ) );
+    } else {
+        $sanitized_input['webhook_token'] = (string) ( $options['webhook_token'] ?? '' );
     }
 
     return $sanitized_input;
@@ -178,6 +196,23 @@ function reguest_wp_field_mapping_cb(): void {
     echo '</select> ';
     echo '<button type="button" class="button prototype-button" data-func="add">Hinzufügen</button> ';
     echo '</div>';
+}
+
+function reguest_wp_field_webhook_url_cb(): void {
+    $url = rest_url( 'reguest-wp/v1/submit' );
+    echo '<input type="text" value="' . esc_attr( $url ) . '" class="large-text" readonly />';
+    echo '<p class="description">Diesen Link als Webhook-URL im Formular eintragen.</p>';
+}
+
+function reguest_wp_field_webhook_token_cb(): void {
+    $options = (array) get_option( 'reguest_wp_options', [] );
+    $token   = (string) ( $options['webhook_token'] ?? '' );
+    echo '<input type="text" value="' . esc_attr( $token ) . '" class="large-text" readonly />';
+    echo '<br><label style="margin-top: 8px; display: inline-block;">';
+    echo '<input type="checkbox" name="reguest_wp_options[regenerate_token]" value="1" /> ';
+    echo 'Token neu generieren (beim nächsten Speichern)';
+    echo '</label>';
+    echo '<p class="description">Diesen Token als Webhook-Token im Formular eintragen. Eine Änderung erfordert die Aktualisierung aller verbundenen Formulare.</p>';
 }
 
 function reguest_wp_options_page_html(): void {
