@@ -1,6 +1,6 @@
 # AM Hotelfolio Reguest
 
-WordPress plugin that forwards form submissions to the [Re:Guest](https://www.reguest.io/) hotel inquiry API. Supports **Contact Form 7** and **HF Forms**, with optional Polylang integration for multilingual sites.
+WordPress plugin that forwards form submissions to the [Re:Guest](https://www.reguest.io/) hotel inquiry API. Supports **Contact Form 7** and **Hotelfolio**, with optional Polylang integration for multilingual sites.
 
 ## Features
 
@@ -16,7 +16,7 @@ WordPress plugin that forwards form submissions to the [Re:Guest](https://www.re
 
 - WordPress 6.9+
 - PHP 8.3+
-- [Contact Form 7](https://wordpress.org/plugins/contact-form-7/) or [HF Forms](https://wordpress.org/plugins/hf-form/) (or both)
+- [Contact Form 7](https://wordpress.org/plugins/contact-form-7/) or [Hotelfolio](https://www.alpinmarketing.at/hotelfolio/) (or both)
 - A valid Re:Guest API account (URL, username, password)
 
 ## Installation
@@ -111,4 +111,4 @@ Creates `dist/am-hotelfolio-reguest.zip`, ready for upload to WordPress.
 
 ## License
 
-Proprietary — © Ing. Christian Fohrmann / [Alpin Marketing](https://www.alpinmarketing.at)
+Proprietary — © Ing. Christian Fohrmann / [ALPINMARKETING®](https://www.alpinmarketing.at)
