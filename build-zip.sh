@@ -1,12 +1,14 @@
 #!/bin/bash
 PLUGIN_DIR="$(cd "$(dirname "$0")" && pwd)"
+DIST_DIR="$PLUGIN_DIR/dist"
+mkdir -p "$DIST_DIR"
 cd "$PLUGIN_DIR/.." && \
-zip -r "$PLUGIN_DIR/am-hotelfolio-reguest.zip" am-hotelfolio-reguest \
+zip -r "$DIST_DIR/am-hotelfolio-reguest.zip" am-hotelfolio-reguest \
   --exclude "*.git*" \
   --exclude "*/.gitignore" \
   --exclude "*/.gitlab-ci.yml" \
   --exclude "*/.DS_Store" \
   --exclude "*/.claude*" \
   --exclude "*/build-zip.sh" \
-  --exclude "*/am-hotelfolio-reguest.zip"
-echo "Created: $PLUGIN_DIR/am-hotelfolio-reguest.zip"
+  --exclude "*/dist/*"
+echo "Created: $DIST_DIR/am-hotelfolio-reguest.zip"
