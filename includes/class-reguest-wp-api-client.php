@@ -100,7 +100,7 @@ class ReguestAPIClient {
         if ( $anredeValue !== null ) {
             $salutation = is_array( $anredeValue ) ? ( $anredeValue[0] ?? null ) : $anredeValue;
             if ( is_string( $salutation ) && $salutation !== '' ) {
-                // Polylang for CF7 can wrap values in {}; strip braces and spaces before matching.
+                // Some form plugins wrap values in {}; strip braces and spaces before matching.
                 switch ( strtolower( trim( $salutation, ' {}' ) ) ) {
                     case 'herr':
                     case 'mr':

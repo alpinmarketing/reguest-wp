@@ -38,7 +38,7 @@ function reguest_wp_handle_webhook( WP_REST_Request $request ): WP_REST_Response
     }
 
     $stored_token = (string) ( $options['webhook_token'] ?? '' );
-    $sent_token   = (string) ( $request->get_header( 'x_hf_token' ) ?? '' );
+    $sent_token   = (string) ( $request->get_header( 'x-hf-token' ) ?? '' );
 
     if ( $stored_token === '' || ! hash_equals( $stored_token, $sent_token ) ) {
         return new WP_REST_Response( [ 'success' => false, 'error' => 'Unauthorized.' ], 401 );

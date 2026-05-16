@@ -181,7 +181,7 @@ function reguest_wp_field_mapping_cb(): void {
     foreach ( $mappings as $key => $value ) {
         echo '<div class="mapping-row">';
         echo '<label for="reguest_wp_options_form_mapping_' . esc_attr( (string) $key ) . '">' . esc_html( (string) $key ) . '</label>';
-        echo '<input type="text" name="reguest_wp_options[form_mapping][' . esc_attr( (string) $key ) . ']" value="' . esc_attr( (string) $value ) . '" placeholder="Contact Form 7 field name" data-key="' . esc_attr( (string) $key ) . '" class="regular-text" />';
+        echo '<input type="text" name="reguest_wp_options[form_mapping][' . esc_attr( (string) $key ) . ']" value="' . esc_attr( (string) $value ) . '" placeholder="Form field name" data-key="' . esc_attr( (string) $key ) . '" class="regular-text" />';
         echo '<button type="button" class="button button-secondary remove-mapping-row">Entfernen</button>';
         echo '</div>';
     }
