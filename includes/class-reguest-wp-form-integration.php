@@ -33,7 +33,10 @@ add_action( 'rest_api_init', 'reguest_wp_register_routes' );
 function reguest_wp_handle_webhook( WP_REST_Request $request ): WP_REST_Response {
     $options = (array) get_option( 'reguest_wp_options' );
 
+    reguest_wp_log_error( 'Webhook received.' );
+
     if ( empty( $options['active'] ) || empty( $options['uri'] ) || empty( $options['username'] ) || empty( $options['password'] ) ) {
+        reguest_wp_log_error( 'Webhook rejected: plugin not configured (check Active, URI, Username, Password).' );
         return new WP_REST_Response( [ 'success' => false, 'error' => 'Plugin not configured.' ], 503 );
     }
 
@@ -41,11 +44,13 @@ function reguest_wp_handle_webhook( WP_REST_Request $request ): WP_REST_Response
     $sent_token   = (string) ( $request->get_header( 'x-hf-token' ) ?? '' );
 
     if ( $stored_token === '' || ! hash_equals( $stored_token, $sent_token ) ) {
+        reguest_wp_log_error( 'Webhook rejected: token mismatch or missing.' );
         return new WP_REST_Response( [ 'success' => false, 'error' => 'Unauthorized.' ], 401 );
     }
 
     $body = $request->get_json_params();
     if ( ! is_array( $body ) || empty( $body ) ) {
+        reguest_wp_log_error( 'Webhook rejected: empty or invalid JSON body.' );
         return new WP_REST_Response( [ 'success' => false, 'error' => 'Empty or invalid JSON body.' ], 400 );
     }
 
