@@ -1,22 +1,22 @@
 # Reguest WP
 
-WordPress plugin that forwards form submissions to the [Re:Guest](https://www.reguest.io/) hotel inquiry API. Supports **Contact Form 7** and **Hotelfolio**, with optional Polylang integration for multilingual sites.
+WordPress plugin that forwards form submissions to the [Re:Guest](https://www.reguest.io/) hotel inquiry API via a generic webhook endpoint. Works with any form plugin that supports outgoing webhooks.
 
 ## Features
 
-- Connects Contact Form 7 and HF Forms to the Re:Guest API
+- Generic REST webhook endpoint — compatible with any form plugin
 - Visual field mapping UI in the WordPress admin — no code required
-- Auto-detects submission language via CF7 locale or Polylang (`pll_current_language`)
+- Auto-detects submission language via Polylang (`pll_current_language`)
 - Resolves German country names to ISO 3166-1 alpha-2 codes automatically
 - Debug mode: logs request payloads and API responses inside the admin panel
 - Test mode: simulates the full data pipeline without actually sending to the API
-- Settings migration from the previous plugin version (pre-Settings API)
+- Settings migration from previous plugin versions
 
 ## Requirements
 
 - WordPress 6.9+
 - PHP 8.3+
-- [Contact Form 7](https://wordpress.org/plugins/contact-form-7/) or [Hotelfolio](https://www.alpinmarketing.at/hotelfolio/) (or both)
+- A form plugin that supports outgoing webhooks (e.g. [Hotelfolio](https://www.alpinmarketing.at/hotelfolio/), Gravity Forms, Fluent Forms, WPForms Pro, Ninja Forms)
 - A valid Re:Guest API account (URL, username, password)
 
 ## Installation
@@ -42,7 +42,7 @@ Go to **Settings → Reguest** and fill in:
 
 ### 2. Field Mapping
 
-In the **Form Field Mapping** section, map each Re:Guest API field to the corresponding form field name (the `name` attribute of your CF7 tag or HF Forms input).
+In the **Form Field Mapping** section, map each Re:Guest API field to the corresponding form field name (the `name` attribute of the HTML input).
 
 Use the dropdown to pick an API field, click **Hinzufügen**, then type the matching form field name in the text box.
 
@@ -62,10 +62,9 @@ Use the dropdown to pick an API field, click **Hinzufügen**, then type the matc
 | `CountryCode` | ISO 3166-1 alpha-2 code, or a German country name (auto-converted) |
 | `PhoneNumber` / `MobileNumber` / `FaxNumber` | Contact numbers |
 | `Text` | Free-text message |
-| `LanguageCode` | ISO 639-1 language code (auto-detected if Polylang is active) |
+| `LanguageCode` | ISO 639-1 language code (auto-detected from `_wp_locale` if sent by the form) |
 | `NewsletterSubscription` | Boolean — accepts `true`, `1`, `yes`, etc. |
-| `ArrivalDate` / `AlternativeArrivalDate` | Primary and alternative arrival |
-| `DepartureDate` / `AlternativeDepartureDate` | Primary and alternative departure |
+| `AlternativeArrivalDate` / `AlternativeDepartureDate` | Alternative travel dates |
 | `OfferName` / `OfferCode` | Offer name and code |
 | `Adults` | Number of adults (maps into `RoomOccupancies`) |
 | `Children` | Number of children (maps into `RoomOccupancies`) |
@@ -74,21 +73,52 @@ Use the dropdown to pick an API field, click **Hinzufügen**, then type the matc
 | `ForeignId` | External reference ID |
 | `ThirdPartyNotes` | Notes for third parties |
 
-### 3. Add the trigger field to your form
+### 3. Webhook Endpoint
 
-The plugin only fires when a hidden field named **`reguest`** with value **`true`** is present in the submission. Add this to every form that should send data to Re:Guest:
+The plugin exposes a REST endpoint that your form plugin calls on submission:
 
-**Contact Form 7:**
 ```
-[hidden reguest "true"]
-```
-
-**HF Forms / native HTML:**
-```html
-<input type="hidden" name="reguest" value="true">
+POST https://your-site.com/wp-json/reguest-wp/v1/submit
 ```
 
-Forms without this field are silently ignored.
+The **Webhook URL** and **Webhook Token** are displayed at the bottom of the Settings → Reguest page. Copy both values into your form plugin's webhook configuration.
+
+#### Request format
+
+The endpoint expects a JSON body with a flat key → value structure matching your field mapping, plus an optional `_wp_locale` field:
+
+```json
+{
+  "vorname": "Hans",
+  "familienname": "Muster",
+  "email": "hans@example.com",
+  "ankunft": "2026-06-01",
+  "abreise": "2026-06-08",
+  "erwachsene": "2",
+  "_wp_locale": "de"
+}
+```
+
+#### Authentication
+
+Every request must include the token as a header:
+
+```
+X-HF-Token: your-webhook-token
+```
+
+Requests with a missing or incorrect token are rejected with HTTP 401.
+
+#### Hotelfolio (HF Forms)
+
+Open the `hf_form` post in the WordPress editor → **Settings tab**:
+
+| Field | Value |
+|---|---|
+| Webhook URL | copied from Settings → Reguest |
+| Webhook Token | copied from Settings → Reguest |
+
+The language (`_wp_locale`) is automatically included in the payload from the active Polylang language at the time the form page was rendered. No hidden field required.
 
 ## Debug & Test modes
 
