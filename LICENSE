@@ -1,0 +1,63 @@
+GNU GENERAL PUBLIC LICENSE
+Version 2, June 1991
+
+Copyright (C) 2026 Alpinmarketing® (www.alpinmarketing.at)
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+The full license text is available at:
+https://www.gnu.org/licenses/gpl-2.0.html
+
+-------------------------------------------------------------------------------
+MANDATORY ATTRIBUTION REQUIREMENT
+-------------------------------------------------------------------------------
+
+As a condition of using, distributing, or creating derivative works based on
+this software, you must comply with the following attribution requirement:
+
+1. Any public distribution, fork, derivative work, or integration of this
+   plugin must include a visible attribution to the original author.
+
+2. This attribution must appear as a dofollow hyperlink in the form:
+
+       <a href="https://www.alpinmarketing.at/" rel="dofollow">www.alpinmarketing.at</a>
+
+   The link must be placed in at least one of the following locations:
+   - The plugin's description or readme file
+   - The plugin's settings or admin page
+   - Any website or documentation where the plugin or its derivative is
+     publicly presented
+
+3. The attribution link must NOT carry rel="nofollow", rel="sponsored",
+   rel="ugc", or any other attribute that prevents search engines from
+   following the link.
+
+4. Removal or obfuscation of this attribution requirement is not permitted.
+
+This attribution requirement is in addition to, and does not replace, the
+obligations imposed by the GNU General Public License Version 2.
+
+-------------------------------------------------------------------------------
+ACCEPTANCE OF LICENSE
+-------------------------------------------------------------------------------
+
+BY INSTALLING, COPYING, USING, OR DISTRIBUTING THIS PLUGIN, YOU INDICATE YOUR
+FULL ACCEPTANCE OF ALL TERMS AND CONDITIONS OF THIS LICENSE, INCLUDING THE
+MANDATORY ATTRIBUTION REQUIREMENT ABOVE. IF YOU DO NOT AGREE TO THESE TERMS,
+YOU ARE NOT PERMITTED TO USE, COPY, MODIFY, OR DISTRIBUTE THIS SOFTWARE.
+
+Each user is solely responsible for ensuring their use of this plugin complies
+with this license. Alpinmarketing® accepts no liability for any use that
+violates these terms.
