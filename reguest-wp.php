@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Description: Sends form submissions to the ReGuest API via a generic webhook endpoint.
  * Version: 26.10.22.1
  * Requires at least: 6.9
- * Requires PHP: 8.3
+ * Requires PHP: 8.4.27
  * Author: Ing. Christian Fohrmann
  * Author URI: https://www.alpinmarketing.at
  */
