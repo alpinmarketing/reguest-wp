@@ -37,7 +37,7 @@ function reguest_wp_settings_init(): void {
         ]
     );
 
-    add_settings_section( 'reguest_wp_main_section', 'API Credentials', null, 'reguest_wp' );
+    add_settings_section( 'reguest_wp_main_section', 'API Credentials', '__return_null', 'reguest_wp' );
 
     add_settings_field( 'reguest_wp_active',    'Plugin aktiv',  'reguest_wp_field_active_cb',    'reguest_wp', 'reguest_wp_main_section' );
     add_settings_field( 'reguest_wp_debug',     'Debug Modus',   'reguest_wp_field_debug_cb',     'reguest_wp', 'reguest_wp_main_section' );
@@ -46,10 +46,10 @@ function reguest_wp_settings_init(): void {
     add_settings_field( 'reguest_wp_password',  'Passwort',      'reguest_wp_field_text_cb',      'reguest_wp', 'reguest_wp_main_section', [ 'id' => 'password', 'type' => 'password' ] );
     add_settings_field( 'reguest_wp_uri',       'API Link',      'reguest_wp_field_text_cb',      'reguest_wp', 'reguest_wp_main_section', [ 'id' => 'uri',      'type' => 'url' ] );
 
-    add_settings_section( 'reguest_wp_form_section', 'Form Field Mapping', null, 'reguest_wp' );
+    add_settings_section( 'reguest_wp_form_section', 'Form Field Mapping', '__return_null', 'reguest_wp' );
     add_settings_field( 'reguest_wp_form_mapping', 'API Field => Form Field', 'reguest_wp_field_mapping_cb', 'reguest_wp', 'reguest_wp_form_section' );
 
-    add_settings_section( 'reguest_wp_webhook_section', 'Webhook Endpoint', null, 'reguest_wp' );
+    add_settings_section( 'reguest_wp_webhook_section', 'Webhook Endpoint', '__return_null', 'reguest_wp' );
     add_settings_field( 'reguest_wp_webhook_url',   'Webhook URL',   'reguest_wp_field_webhook_url_cb',   'reguest_wp', 'reguest_wp_webhook_section' );
     add_settings_field( 'reguest_wp_webhook_token', 'Webhook Token', 'reguest_wp_field_webhook_token_cb', 'reguest_wp', 'reguest_wp_webhook_section' );
 }
@@ -74,6 +74,9 @@ function reguest_wp_handle_admin_actions(): void {
 }
 add_action( 'admin_init', 'reguest_wp_handle_admin_actions' );
 
+/**
+ * @return array<string, mixed>
+ */
 function reguest_wp_sanitize_options( mixed $input ): array {
     $options          = (array) get_option( 'reguest_wp_options', [] );
     $sanitized_input  = [];
@@ -125,6 +128,9 @@ function reguest_wp_field_test_mode_cb(): void {
     echo '<p class="description">Wenn aktiviert, wird der API-Aufruf nur simuliert und die Daten werden nicht gesendet. Die erstellten Daten werden im Debug-Log angezeigt (wenn der Debug-Modus ebenfalls aktiv ist).</p>';
 }
 
+/**
+ * @param array{id?: string, type?: string} $args
+ */
 function reguest_wp_field_text_cb( array $args ): void {
     $options     = (array) get_option( 'reguest_wp_options', [] );
     $id          = (string) ( $args['id'] ?? '' );

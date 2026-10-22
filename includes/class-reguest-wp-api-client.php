@@ -8,6 +8,7 @@ class ReguestAPIClient {
     private string $username;
     private string $password;
 
+    /** @var list<string> */
     private static array $knownApiKeys = [
         'EmailAddress', 'ArrivalDate', 'DepartureDate', 'MealType', 'GuestUserType',
         'Gender', 'Anrede', 'Title', 'FirstName', 'LastName', 'FullName', 'FamilyName',
@@ -29,6 +30,11 @@ class ReguestAPIClient {
         $this->password = $password;
     }
 
+    /**
+     * @param array<array-key, mixed> $form      Raw form submission (field name => value).
+     * @param array<array-key, mixed> $fields    API field => form field mapping.
+     * @param array<string, mixed>    $meta_data Extra API fields, overridden by mapped form values.
+     */
     public function send(
         array $form,
         array $fields,
@@ -76,10 +82,16 @@ class ReguestAPIClient {
                     reguest_wp_log_error( 'Invalid value received for CountryCode; expected a string. Value skipped.' );
                 }
             } elseif ( in_array( $normalizedApiKey, $dateFields, true ) ) {
+                $dateValue = is_array( $value ) ? ( $value[0] ?? '' ) : $value;
+                $dateValue = is_scalar( $dateValue ) ? (string) $dateValue : '';
                 try {
-                    $requestData[ $normalizedApiKey ] = ( new DateTime( (string) $value ) )->format( 'Y-m-d' );
+                    // new DateTime('') would silently resolve to "now".
+                    if ( $dateValue === '' ) {
+                        throw new Exception( 'empty' );
+                    }
+                    $requestData[ $normalizedApiKey ] = ( new DateTime( $dateValue ) )->format( 'Y-m-d' );
                 } catch ( Exception $e ) {
-                    reguest_wp_log_error( "Invalid date format for {$normalizedApiKey}: " . $value );
+                    reguest_wp_log_error( "Invalid date format for {$normalizedApiKey}: " . $dateValue );
                     $requestData[ $normalizedApiKey ] = null;
                 }
             } elseif ( $normalizedApiKey === 'ChildrenAges' ) {
@@ -141,8 +153,8 @@ class ReguestAPIClient {
         }
 
         try {
-            if ( isset( $request['ArrivalDate'], $request['DepartureDate'] )
-                && new DateTime( $request['ArrivalDate'] ) >= new DateTime( $request['DepartureDate'] ) ) {
+            // Both dates are guaranteed by the required-field check above.
+            if ( new DateTime( $request['ArrivalDate'] ) >= new DateTime( $request['DepartureDate'] ) ) {
                 reguest_wp_log_error( 'Aborting send. DepartureDate must be after ArrivalDate.' );
                 return false;
             }

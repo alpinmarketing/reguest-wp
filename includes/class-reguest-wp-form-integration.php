@@ -49,7 +49,8 @@ function reguest_wp_handle_webhook( WP_REST_Request $request ): WP_REST_Response
     }
 
     $body = $request->get_json_params();
-    if ( ! is_array( $body ) || empty( $body ) ) {
+    // get_json_params() returns null on unparsable JSON despite its array docblock; empty() covers both.
+    if ( empty( $body ) ) {
         reguest_wp_log_error( 'Webhook rejected: empty or invalid JSON body.' );
         return new WP_REST_Response( [ 'success' => false, 'error' => 'Empty or invalid JSON body.' ], 400 );
     }
@@ -61,11 +62,14 @@ function reguest_wp_handle_webhook( WP_REST_Request $request ): WP_REST_Response
     }
     unset( $body['_wp_locale'] );
 
+    // strict_types: normalise stored option types so legacy/migrated values cannot cause an uncaught TypeError.
+    $form_mapping = is_array( $options['form_mapping'] ?? null ) ? $options['form_mapping'] : [];
+
     try {
-        $apiClient = new ReguestAPIClient( $options['uri'], $options['username'], $options['password'] );
+        $apiClient = new ReguestAPIClient( (string) $options['uri'], (string) $options['username'], (string) $options['password'] );
         $success   = $apiClient->send(
             $body,
-            $options['form_mapping'] ?? [],
+            $form_mapping,
             $meta_data,
             ! empty( $options['test_mode'] ),
             ! empty( $options['debug'] )
